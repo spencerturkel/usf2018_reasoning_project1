@@ -2,7 +2,6 @@ import string
 from enum import Enum, auto
 from string import ascii_lowercase, digits
 from typing import Union
-from unittest import TestCase
 
 
 # Formula Grammar
@@ -15,6 +14,9 @@ from unittest import TestCase
 ###########################################################
 
 class Op(Enum):
+    """
+    Operations supported in formulas.
+    """
     AND = auto()
     IF = auto()
     NOT = auto()
@@ -23,12 +25,30 @@ class Op(Enum):
 
 def parse(formula: str):
     """
-    Parses a formula string into a tuple representation using Op.
+    Parses a formula string into an AST tuple representation using Op.
 
-    Implemented as a recursive-descent parser.
+    >>> parse('(AND (IF p q) (NOT r))')
+    (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'))
+    >>> parse('q1')
+    'q1'
+    >>> parse('ABC') is None
+    True
+    >>> parse('((NOT r)') is None
+    True
+    >>> parse('(NOT r))') is None
+    True
+    >>> parse('((NOT r))') is None
+    True
+    >>> parse('abCdef') is None
+    True
+    >>> parse('(F q)') is None
+    True
+    >>> parse('') is None
+    True
     """
+    # Implemented as a recursive-descent parser.
     length = len(formula)
-    index = 0  # current view into formula
+    index = 0  # Current view into formula
 
     def consume_whitespace():
         """Increases the index while the current token is whitespace."""
@@ -44,11 +64,12 @@ def parse(formula: str):
 
         ch = formula[index]
         if ch == '(':
-            lex()
+            index += 1
+            consume_whitespace()
             result = parse_list()
             consume_whitespace()
             if index < length and formula[index] == ')':
-                lex()
+                index += 1
                 return result
             raise ValueError('Unclosed form')
         if ch in (ascii_lowercase + digits):
@@ -57,12 +78,7 @@ def parse(formula: str):
                 word.append(formula[index])
                 index += 1
             return ''.join(word)
-
-    def lex():
-        """Increments the index then consumes whitespace."""
-        nonlocal index
-        index += 1
-        consume_whitespace()
+        raise ValueError('Could not parse form')
 
     def parse_list():
         """Parses the contents of a parenthesized s-exp list"""
@@ -70,54 +86,21 @@ def parse(formula: str):
         for op in Op:
             if formula.startswith(op.name, index):
                 index += len(op.name)
-                lex()
+                consume_whitespace()
                 first_arg = parse_form()
                 if op == Op.NOT:
-                    consume_whitespace()
                     return op, first_arg
-                lex()
+                consume_whitespace()
                 second_arg = parse_form()
                 return op, first_arg, second_arg
+        raise ValueError('Could not parse list')
 
     consume_whitespace()
     try:
-        result = parse_form()
-        return None if index < length else result
+        final_result = parse_form()
+        return final_result if index == length else None
     except ValueError:
         return None
-
-
-class ParseTests(TestCase):
-    def test_good_one(self):
-        self.assertEqual('xy', parse('xy'))
-
-    def test_good_two(self):
-        self.assertEqual((Op.NOT, 'p'), parse('(NOT p)'))
-
-    def test_good_three(self):
-        self.assertEqual((Op.IF, 'p', 'q'), parse('\t(\nIF p q\t)'))
-
-    def test_good_four(self):
-        self.assertEqual((Op.NOT, (Op.NOT, (Op.NOT, (Op.NOT, 'not')))),
-                         parse('(NOT (NOT (NOT (NOT not))  )		)'))
-
-    def test_bad_extra_parentheses(self):
-        self.assertIsNone(parse('((NOT p))'))
-
-    def test_bad_unbalanced_left(self):
-        self.assertIsNone(parse('((NOT (NOT (NOT (NOT not))  )		)'))
-
-    def test_bad_unbalanced_right(self):
-        self.assertIsNone(parse('(NOT (NOT (NOT (NOT not))  )		))'))
-
-    def test_bad_op_capitalization(self):
-        self.assertIsNone(parse('(NoT x)'))
-
-    def test_bad_var_capitalization(self):
-        self.assertIsNone(parse('(NOT X)'))
-
-    def test_bad_spelling(self):
-        self.assertIsNone(parse('(NT x)'))
 
 
 # noinspection PyPep8Naming
