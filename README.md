@@ -17,6 +17,11 @@ Must implement DPLL algorithm
 - For each iteration:
 -- Perform 1-literal rule
 -- Perform affirmative negation rule
+--- Find a clause with a single literal p
+--- For every clause C containing p in any form:
+---- If C contains p, then remove the entire clause
+---- If C contains -p, then remove -p from C
+-- Perform affirmative negation rule
 -- Perform resolution
 -- If all clauses eliminated: return TRUE
 -- If empty clause: return FALSE
@@ -37,3 +42,4 @@ Must return within 60 seconds. NO OTHER OUTPUT.
 # Comments required
 # TODO
 Update parser and evaluator for multiple args to AND/OR
+
