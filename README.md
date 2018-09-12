@@ -2,45 +2,44 @@
 F is input string of an sexp of a PC formula
 Must implement DPLL algorithm
 # DPLL
-- Convert to CNF
-- For each iteration:
--- Perform 1-literal rule
--- Perform affirmative negation rule
---- Find a clause with a single literal p
---- For every clause C containing p in any form:
----- If C contains p, then remove the entire clause
----- If C contains -p, then remove -p from C
--- Perform resolution
--- If all clauses eliminated: return TRUE
--- If empty clause: return FALSE
--- Else, reiterate
-<ul>
-<li> Perform 1-literal rule</li>
-<ul>
-  <li>Find a clause with a single literal p</li>
-  <li> For every clause C containing p in any form:</li>
-  <li>If C contains p, then remove the entire clause</li>
-  <li>If C contains -p, then remove -p from C</li>
-</ul>
-  <li> Perform affirmative negation rule </li>
-  <ul>
-    <li>Find a literal p which only appears in its positive form, or only its negative form</li>
-    <li>Remove all clauses containing p</li>
-  </ul>
-  <li> Perform resolution </li>
-  <li> If all clauses eliminated: return TRUE </li>
-  <li> If empty clause: return FALSE </li>
-  <li> Else, reiterate </li>
-</ul>
+[Wikipedia Article](https://en.wikipedia.org/wiki/DPLL_algorithm)
+
+1. Convert to Conjunctive Normal Form (CNF)
+  1. Transform IFs into disjunctions
+  2. Push negations into literals using DeMorgan's
+  3. Eliminate double negations
+  4. Distribute disjunctions into conjunctions
+
+  *Example*
+  
+  `(~p -> ~q) -> (p -> q)`
+  1. `~(~~p + ~q) + (~p + q)`
+  2. `(~~~p * ~~q) + (~p + q)`
+  3. `(~p * q) + (~p + q)`
+  4. `(~p + ~p + q) * (q + ~p + q)`
+2. If all clauses eliminated, return `True`
+3. If there is an empty clause, return `False`
+4. Exhaustively perform 1-literal rule.
+  1. Find a clause with a single literal `p`
+  2. For every clause `C` containing `p` in any form:
+  3. If `C` contains `p`, then remove the entire clause
+  4. If `C` contains `~p`, then remove `~p` from `C`
+5. Exhaustively perform affirmative negation rule.
+  1. Find a literal `p` which only appears all `True` or all `False`.
+  2. Remove all clauses containing `p`.
+6. Perform resolution to obtain two new formulas.
+7. Recurse to step 2 with each new formula, returning first `True` result.
 # Input
 May assume well-formed.
 
 Arbitrary whitespace. Whitespace may be spaces, tabs, newlines, etc.
 # S-exps
+```
 S-exp = freevar | list
 freevar = [a-z0-9]+
 list = (var-op S-exp\( S-exp\)\+) | (NOT S-exp) | (IF S-exp S-exp)
 var-op = AND | OR
+```
 # Output
 Must return within 60 seconds. NO OTHER OUTPUT.
 - S if the formula is satisfiable
