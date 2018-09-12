@@ -33,16 +33,16 @@ S-exp-list = S-exp | S-exp ws S-exp-list
    1. `~(~~p + ~q) + (~p + q)`
    2. `(~~~p * ~~q) + (~p + q)`
    3. `(~p * q) + (~p + q)`
-  4. `(~p + ~p + q) * (q + ~p + q)`
+   4. `(~p + ~p + q) * (q + ~p + q)`
 2. If all clauses eliminated, return `True`
 3. If there is an empty clause, return `False`
 4. Exhaustively perform 1-literal rule.
    1. Find a clause with a single literal `p`
    2. For every clause `C` containing `p` in any form:
-   3. If `C` contains `p`, then remove the entire clause
-   4. If `C` contains `~p`, then remove `~p` from `C`
+      * If `C` contains `p`, then remove the entire clause
+      * If `C` contains `~p`, then remove `~p` from `C`
 5. Exhaustively perform affirmative negation rule.
-   1. Find a literal `p` which only appears all `True` or all `False`.
+   1. Find a literal `p` which only appears all positive or all negative.
    2. Remove all clauses containing `p`.
 6. Perform resolution to obtain two new formulas.
 7. Recurse to step 2 with each new formula, returning first `True` result.
