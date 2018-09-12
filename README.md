@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/spencerturkel/usf2018_reasoning_project1.svg?token=gm1zuwtz6yWqd9Rwapxf&branch=master)](https://travis-ci.com/spencerturkel/usf2018_reasoning_project1)
+
 # proveFormula(F)
 F is input string of an s-exp of a PC formula.
 
