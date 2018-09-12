@@ -1,7 +1,6 @@
-import string
 from enum import Enum
 from itertools import combinations
-from string import ascii_lowercase, digits
+from string import ascii_lowercase, digits, whitespace
 
 
 ################################################################
@@ -27,6 +26,9 @@ class Op(Enum):
     OR = 4
 
 
+ascii_lowercase_plus_digits = ascii_lowercase + digits
+
+
 def parse(formula: str):
     """
     Parses a formula string into an AST tuple representation using Op.
@@ -35,76 +37,65 @@ def parse(formula: str):
     (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'))
     >>> parse('(OR p (NOT q))')
     (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    >>> parse(' ( OR p ( NOT q ) ) ')
+    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
     >>> parse('(AND (IF p q) (NOT r) (OR p q r))') # AND/OR take 2+ args
     (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'), (<Op.OR: 4>, 'p', 'q', 'r'))
     >>> parse('q1')
     'q1'
-    >>> parse('ABC') is None
-    True
-    >>> parse('(IF p q r)') is None # IF always takes 2 args
-    True
-    >>> parse('((NOT r)') is None
-    True
-    >>> parse('(NOT r))') is None
-    True
-    >>> parse('((NOT r))') is None
-    True
-    >>> parse('abCdef') is None
-    True
-    >>> parse('(F q)') is None
-    True
-    >>> parse('') is None
-    True
+    >>> parse(' ( OR p ( NOT q ) ) ')
+    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
     """
     # Implemented as a recursive-descent parser.
-    length = len(formula)
     index = 0  # Current view into formula
+    length = len(formula)
 
     def consume_whitespace():
         """Increases the index while the current token is whitespace."""
         nonlocal formula, index
-        while index < length and formula[index] in string.whitespace:
+        while formula[index] in whitespace:
             index += 1
 
     def parse_form():
         """Parses a formula."""
         nonlocal formula, index
-        if index >= length:
-            raise ValueError('Empty form')
 
         ch = formula[index]
+
         if ch == '(':
-            index += 1
+            # parsing a call
+            index += 1  # consume '('
             consume_whitespace()
             result = parse_list()
             consume_whitespace()
-            if index < length and formula[index] == ')':
-                index += 1
-                return result
-            raise ValueError('Unclosed form')
-        if ch in (ascii_lowercase + digits):
-            word = []
-            while index < length and formula[index] in (ascii_lowercase + digits):
-                word.append(formula[index])
-                index += 1
-            return ''.join(word)
-        raise ValueError('Could not parse form')
+            index += 1  # consume ')'
+            return result
+
+        # parsing a literal
+        literal = []
+        while index < length and formula[index] in ascii_lowercase_plus_digits:
+            literal.append(formula[index])
+            index += 1
+        return ''.join(literal)
 
     def parse_list():
         """Parses the contents of a parenthesized s-exp list"""
         nonlocal formula, index
+
         if formula.startswith(Op.NOT.name, index):
             index += 3  # len('NOT')
             consume_whitespace()
             first_arg = parse_form()
             return Op.NOT, first_arg
+
         if formula.startswith(Op.IF.name, index):
-            index += 2  # len(Op.IF)
+            index += 2  # len('IF')
             consume_whitespace()
             first_arg = parse_form()
             consume_whitespace()
             second_arg = parse_form()
             return Op.IF, first_arg, second_arg
+
         for op in [Op.AND, Op.OR]:
             if formula.startswith(op.name, index):
                 index += len(op.name)
@@ -116,14 +107,9 @@ def parse(formula: str):
                     call.append(parse_form())
                     consume_whitespace()
                 return tuple(call)
-        raise ValueError('Could not parse list')
 
     consume_whitespace()
-    try:
-        final_result = parse_form()
-        return final_result if index == length else None
-    except ValueError:
-        return None
+    return parse_form()
 
 
 def collect_free_vars(ast):
