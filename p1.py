@@ -3,6 +3,7 @@ from enum import Enum
 from itertools import combinations
 from string import ascii_lowercase, digits
 
+
 ################################################################
 # Formula Grammar
 # S-exp = ws freevar ws | ws list ws
@@ -32,9 +33,15 @@ def parse(formula: str):
 
     >>> parse('(AND (IF p q) (NOT r))')
     (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'))
+    >>> parse('(OR p (NOT q))')
+    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    >>> parse('(AND (IF p q) (NOT r) (OR p q r))') # AND/OR take 2+ args
+    (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'), (<Op.OR: 4>, 'p', 'q', 'r'))
     >>> parse('q1')
     'q1'
     >>> parse('ABC') is None
+    True
+    >>> parse('(IF p q r)') is None # IF always takes 2 args
     True
     >>> parse('((NOT r)') is None
     True
@@ -86,16 +93,29 @@ def parse(formula: str):
     def parse_list():
         """Parses the contents of a parenthesized s-exp list"""
         nonlocal formula, index
-        for op in Op:
+        if formula.startswith(Op.NOT.name, index):
+            index += 3  # len('NOT')
+            consume_whitespace()
+            first_arg = parse_form()
+            return Op.NOT, first_arg
+        if formula.startswith(Op.IF.name, index):
+            index += 2  # len(Op.IF)
+            consume_whitespace()
+            first_arg = parse_form()
+            consume_whitespace()
+            second_arg = parse_form()
+            return Op.IF, first_arg, second_arg
+        for op in [Op.AND, Op.OR]:
             if formula.startswith(op.name, index):
                 index += len(op.name)
                 consume_whitespace()
                 first_arg = parse_form()
-                if op == Op.NOT:
-                    return op, first_arg
+                call = [op, first_arg]
                 consume_whitespace()
-                second_arg = parse_form()
-                return op, first_arg, second_arg
+                while formula[index] != ')':
+                    call.append(parse_form())
+                    consume_whitespace()
+                return tuple(call)
         raise ValueError('Could not parse list')
 
     consume_whitespace()
@@ -165,12 +185,22 @@ def evaluate(ast, true_vars):
     False
     >>> evaluate((Op.AND, 'a', 'b'), {'a', 'b'})
     True
+    >>> evaluate((Op.AND, 'a', 'b', 'c'), {'a', 'b'})
+    False
+    >>> evaluate((Op.AND, 'a', 'b', 'c'), {'a', 'b', 'c'})
+    True
     >>> evaluate((Op.AND, 'a', 'b'), {'b'})
     False
     >>> evaluate((Op.OR, 'a', 'b'), {})
     False
     >>> evaluate((Op.OR, 'a', 'b'), {'a'})
     True
+    >>> evaluate((Op.OR, 'a', 'b', 'c'), {'a'})
+    True
+    >>> evaluate((Op.OR, 'a', 'b', 'c'), {'c'})
+    True
+    >>> evaluate((Op.OR, 'a', 'b', 'c'), {})
+    False
     >>> evaluate((Op.OR, 'a', 'b'), {'a', 'b'})
     True
     >>> evaluate((Op.OR, 'a', 'b'), {'b'})
@@ -181,16 +211,20 @@ def evaluate(ast, true_vars):
         if isinstance(node, str):
             return node in true_vars
         op = node[0]
-        first_arg = node[1]
         if op == Op.NOT:
-            return not go(first_arg)
-        second_arg = node[2]
-        if op == Op.AND:
-            return go(first_arg) and go(second_arg)
+            return not go(node[1])
         if op == Op.IF:
-            return go(second_arg) if go(first_arg) else True
+            return go(node[2]) if go(node[1]) else True
+        if op == Op.AND:
+            for sub_node in node[1:]:
+                if not go(sub_node):
+                    return False
+            return True
         if op == Op.OR:
-            return go(first_arg) or go(second_arg)
+            for sub_node in node[1:]:
+                if go(sub_node):
+                    return True
+            return False
 
     return go(ast)
 
@@ -199,36 +233,70 @@ def determine_satisfiability(ast):
     """
     Determines the satisfiability of a formula.
     :param ast: Result from parse()
-    :return: True if tautology, False if unsatisfiable, otherwise number of satisfying variable instantiations
+    :return: True if satisfiable, False if unsatisfiable
 
     >>> determine_satisfiability('x')
-    1
+    True
     >>> determine_satisfiability((Op.NOT, 'x'))
-    1
+    True
     >>> determine_satisfiability((Op.OR, 'x', (Op.NOT, 'x')))
     True
     >>> determine_satisfiability((Op.AND, 'x', (Op.NOT, 'x')))
     False
     >>> determine_satisfiability((Op.OR, 'x', 'y'))
-    3
+    True
     >>> determine_satisfiability((Op.OR, 'x', (Op.OR, 'y', 'z')))
-    7
+    True
     >>> determine_satisfiability((Op.NOT, (Op.OR, 'x', (Op.OR, 'y', 'z'))))
-    1
+    True
     """
     free_vars = collect_free_vars(ast)
     power_set = [combo
                  for subset in (combinations(free_vars, r) for r in range(1 + len(free_vars)))
                  for combo in subset]
-    count = 0
     for subset in power_set:
         if evaluate(ast, subset):
-            count += 1
-    if count == 0:
-        return False
-    if count == len(power_set):
-        return True
-    return count
+            return True
+    return False
+
+
+def convert_to_cnf(ast):
+    """
+    Transforms the parsed AST into Conjunctive Normal Form.
+    :param ast: Result from parse()
+    :return: An AST of the form (Op.AND, ...), where the rest of the AST does NOT have any Op.AND values.
+    """
+    # TODO
+    return ast
+
+
+def dpll(ast):
+    """
+    Runs the DPLL algorithm on the parsed AST.
+
+    This function should always agree with determine_satisfiability(ast).
+
+    :param ast: Result from parse()
+    :return: True if satisfiable, False if unsatisfiable
+
+    >>> dpll('x')
+    True
+    >>> dpll((Op.NOT, 'x'))
+    True
+    >>> dpll((Op.OR, 'x', (Op.NOT, 'x')))
+    True
+    >>> dpll((Op.AND, 'x', (Op.NOT, 'x')))
+    False
+    >>> dpll((Op.OR, 'x', 'y'))
+    True
+    >>> dpll((Op.OR, 'x', (Op.OR, 'y', 'z')))
+    True
+    >>> dpll((Op.NOT, (Op.OR, 'x', (Op.OR, 'y', 'z'))))
+    True
+    """
+    ast = convert_to_cnf(ast)
+    # TODO
+    return determine_satisfiability(ast)
 
 
 # noinspection PyPep8Naming
@@ -236,26 +304,22 @@ def proveFormula(formula: str):
     """
     Implements proveFormula according to grader.py
     >>> proveFormula('p')
-    1
+    'S'
     >>> proveFormula('(NOT (NOT (NOT (NOT not))  )\t)')
-    1
-    >>> proveFormula('(NOT (NOT (NOT (NOT not))  )')
-    'E'
+    'S'
     >>> proveFormula('(IF p p)')
-    'T'
+    'S'
     >>> proveFormula('(AND p (NOT p))')
     'U'
     >>> proveFormula('(OR p (NOT q))')
-    3
+    'S'
+    >>> proveFormula('(OR p (NOT q) q)')
+    'S'
+    >>> proveFormula('(OR (NOT q) q)')
+    'S'
+    >>> proveFormula('(AND (NOT q) q)')
+    'U'
+    >>> proveFormula('(AND (NOT q) q q)')
+    'U'
     """
-    ast = parse(formula)
-
-    if ast is None:
-        return 'E'
-
-    result = determine_satisfiability(ast)
-    if result is True:
-        return 'T'
-    if result is False:
-        return 'U'
-    return result
+    return 'S' if dpll(parse(formula)) else 'U'
