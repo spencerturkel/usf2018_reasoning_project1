@@ -233,7 +233,7 @@ def determine_satisfiability(ast):
     """
     Determines the satisfiability of a formula.
     :param ast: Result from parse()
-    :return: True if tautology, False if unsatisfiable, otherwise number of satisfying variable instantiations
+    :return: True if satisfiable, False if unsatisfiable
 
     >>> determine_satisfiability('x')
     True
@@ -260,6 +260,45 @@ def determine_satisfiability(ast):
     return False
 
 
+def convert_to_cnf(ast):
+    """
+    Transforms the parsed AST into Conjunctive Normal Form.
+    :param ast: Result from parse()
+    :return: An AST of the form (Op.AND, ...), where the rest of the AST does NOT have any Op.AND values.
+    """
+    # TODO
+    return ast
+
+
+def dpll(ast):
+    """
+    Runs the DPLL algorithm on the parsed AST.
+
+    This function should always agree with determine_satisfiability(ast).
+
+    :param ast: Result from parse()
+    :return: True if satisfiable, False if unsatisfiable
+
+    >>> dpll('x')
+    True
+    >>> dpll((Op.NOT, 'x'))
+    True
+    >>> dpll((Op.OR, 'x', (Op.NOT, 'x')))
+    True
+    >>> dpll((Op.AND, 'x', (Op.NOT, 'x')))
+    False
+    >>> dpll((Op.OR, 'x', 'y'))
+    True
+    >>> dpll((Op.OR, 'x', (Op.OR, 'y', 'z')))
+    True
+    >>> dpll((Op.NOT, (Op.OR, 'x', (Op.OR, 'y', 'z'))))
+    True
+    """
+    ast = convert_to_cnf(ast)
+    # TODO
+    return determine_satisfiability(ast)
+
+
 # noinspection PyPep8Naming
 def proveFormula(formula: str):
     """
@@ -283,4 +322,4 @@ def proveFormula(formula: str):
     >>> proveFormula('(AND (NOT q) q q)')
     'U'
     """
-    return 'S' if determine_satisfiability(parse(formula)) else 'U'
+    return 'S' if dpll(parse(formula)) else 'U'
