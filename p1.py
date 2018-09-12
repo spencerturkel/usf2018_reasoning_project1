@@ -2,7 +2,6 @@ import string
 from enum import Enum
 from itertools import combinations
 from string import ascii_lowercase, digits
-from typing import Union
 
 ################################################################
 # Formula Grammar
@@ -233,7 +232,7 @@ def determine_satisfiability(ast):
 
 
 # noinspection PyPep8Naming
-def proveFormula(formula: str) -> Union[int, str]:
+def proveFormula(formula: str):
     """
     Implements proveFormula according to grader.py
     >>> proveFormula('p')
