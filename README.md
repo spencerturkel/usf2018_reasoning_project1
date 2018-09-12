@@ -1,8 +1,8 @@
 # proveFormula(F)
 F is input string of an sexp of a PC formula
-
+Must implement DPLL algorithm
 # Input
-Undergrad may assume well-formed.
+May assume well-formed.
 
 Arbitrary whitespace. Whitespace may be spaces, tabs, newlines, etc.
 # S-exps
@@ -11,9 +11,9 @@ freevar = [a-z0-9]+
 list = (var-op S-exp\( S-exp\)\+) | (NOT S-exp) | (IF S-exp S-exp)
 var-op = AND | OR
 # Output
-Returns either a string or an integer. NO OTHER OUTPUT.
-- E if the formula was ill-formed (GRAD STUDENTS ONLY)
-- T if the formula is a tautology
+Must return within 60 seconds. NO OTHER OUTPUT.
+- S if the formula is satisfiable
 - U if the formula is unsatisfiable
-- the number of variable bindings that are satisfiable
 # Comments required
+# TODO
+Update parser and evaluator for multiple args to AND/OR
