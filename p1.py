@@ -185,12 +185,22 @@ def evaluate(ast, true_vars):
     False
     >>> evaluate((Op.AND, 'a', 'b'), {'a', 'b'})
     True
+    >>> evaluate((Op.AND, 'a', 'b', 'c'), {'a', 'b'})
+    False
+    >>> evaluate((Op.AND, 'a', 'b', 'c'), {'a', 'b', 'c'})
+    True
     >>> evaluate((Op.AND, 'a', 'b'), {'b'})
     False
     >>> evaluate((Op.OR, 'a', 'b'), {})
     False
     >>> evaluate((Op.OR, 'a', 'b'), {'a'})
     True
+    >>> evaluate((Op.OR, 'a', 'b', 'c'), {'a'})
+    True
+    >>> evaluate((Op.OR, 'a', 'b', 'c'), {'c'})
+    True
+    >>> evaluate((Op.OR, 'a', 'b', 'c'), {})
+    False
     >>> evaluate((Op.OR, 'a', 'b'), {'a', 'b'})
     True
     >>> evaluate((Op.OR, 'a', 'b'), {'b'})
@@ -201,16 +211,20 @@ def evaluate(ast, true_vars):
         if isinstance(node, str):
             return node in true_vars
         op = node[0]
-        first_arg = node[1]
         if op == Op.NOT:
-            return not go(first_arg)
-        second_arg = node[2]
-        if op == Op.AND:
-            return go(first_arg) and go(second_arg)
+            return not go(node[1])
         if op == Op.IF:
-            return go(second_arg) if go(first_arg) else True
+            return go(node[2]) if go(node[1]) else True
+        if op == Op.AND:
+            for sub_node in node[1:]:
+                if not go(sub_node):
+                    return False
+            return True
         if op == Op.OR:
-            return go(first_arg) or go(second_arg)
+            for sub_node in node[1:]:
+                if go(sub_node):
+                    return True
+            return False
 
     return go(ast)
 
