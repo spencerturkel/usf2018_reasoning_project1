@@ -21,7 +21,6 @@ Must implement DPLL algorithm
 --- For every clause C containing p in any form:
 ---- If C contains p, then remove the entire clause
 ---- If C contains -p, then remove -p from C
--- Perform affirmative negation rule
 -- Perform resolution
 -- If all clauses eliminated: return TRUE
 -- If empty clause: return FALSE
