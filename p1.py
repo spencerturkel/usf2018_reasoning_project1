@@ -1,5 +1,5 @@
 import string
-from enum import Enum, auto
+from enum import Enum
 from itertools import combinations
 from string import ascii_lowercase, digits
 from typing import Union
@@ -16,14 +16,15 @@ from typing import Union
 # S-exp-list = S-exp | S-exp ws S-exp-list
 ################################################################
 
+
 class Op(Enum):
     """
     Operations supported in formulas.
     """
-    AND = auto()
-    IF = auto()
-    NOT = auto()
-    OR = auto()
+    AND = 1
+    IF = 2
+    NOT = 3
+    OR = 4
 
 
 def parse(formula: str):
