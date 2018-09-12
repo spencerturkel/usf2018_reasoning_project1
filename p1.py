@@ -3,6 +3,7 @@ from enum import Enum
 from itertools import combinations
 from string import ascii_lowercase, digits
 
+
 ################################################################
 # Formula Grammar
 # S-exp = ws freevar ws | ws list ws
@@ -32,9 +33,15 @@ def parse(formula: str):
 
     >>> parse('(AND (IF p q) (NOT r))')
     (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'))
+    >>> parse('(OR p (NOT q))')
+    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    >>> parse('(AND (IF p q) (NOT r) (OR p q r))') # AND/OR take 2+ args
+    (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'), (<Op.OR: 4>, 'p', 'q', 'r'))
     >>> parse('q1')
     'q1'
     >>> parse('ABC') is None
+    True
+    >>> parse('(IF p q r)') is None # IF always takes 2 args
     True
     >>> parse('((NOT r)') is None
     True
@@ -86,16 +93,29 @@ def parse(formula: str):
     def parse_list():
         """Parses the contents of a parenthesized s-exp list"""
         nonlocal formula, index
-        for op in Op:
+        if formula.startswith(Op.NOT.name, index):
+            index += 3  # len('NOT')
+            consume_whitespace()
+            first_arg = parse_form()
+            return Op.NOT, first_arg
+        if formula.startswith(Op.IF.name, index):
+            index += 2  # len(Op.IF)
+            consume_whitespace()
+            first_arg = parse_form()
+            consume_whitespace()
+            second_arg = parse_form()
+            return Op.IF, first_arg, second_arg
+        for op in [Op.AND, Op.OR]:
             if formula.startswith(op.name, index):
                 index += len(op.name)
                 consume_whitespace()
                 first_arg = parse_form()
-                if op == Op.NOT:
-                    return op, first_arg
+                call = [op, first_arg]
                 consume_whitespace()
-                second_arg = parse_form()
-                return op, first_arg, second_arg
+                while formula[index] != ')':
+                    call.append(parse_form())
+                    consume_whitespace()
+                return tuple(call)
         raise ValueError('Could not parse list')
 
     consume_whitespace()
