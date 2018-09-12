@@ -13,6 +13,10 @@ Must implement DPLL algorithm
   <li>If C contains -p, then remove -p from C</li>
 </ul>
   <li> Perform affirmative negation rule </li>
+  <ul>
+    <li>Find a literal p which only appears in its positive form, or only its negative form</li>
+    <li>Remove all clauses containing p</li>
+  </ul>
   <li> Perform resolution </li>
   <li> If all clauses eliminated: return TRUE </li>
   <li> If empty clause: return FALSE </li>
