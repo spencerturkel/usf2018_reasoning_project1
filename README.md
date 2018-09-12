@@ -8,8 +8,8 @@ Arbitrary whitespace. Whitespace may be spaces, tabs, newlines, etc.
 # S-exps
 S-exp = freevar | list
 freevar = [a-z0-9]+
-list = (op S-exp S-exp) | (NOT S-exp)
-op = IF | AND | OR
+list = (var-op S-exp\( S-exp\)\+) | (NOT S-exp) | (IF S-exp S-exp)
+var-op = AND | OR
 # Output
 Returns either a string or an integer. NO OTHER OUTPUT.
 - E if the formula was ill-formed (GRAD STUDENTS ONLY)
