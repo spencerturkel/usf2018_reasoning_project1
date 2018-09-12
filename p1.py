@@ -254,15 +254,10 @@ def determine_satisfiability(ast):
     power_set = [combo
                  for subset in (combinations(free_vars, r) for r in range(1 + len(free_vars)))
                  for combo in subset]
-    count = 0
     for subset in power_set:
         if evaluate(ast, subset):
-            count += 1
-    if count == 0:
-        return False
-    if count == len(power_set):
-        return True
-    return count
+            return True
+    return False
 
 
 # noinspection PyPep8Naming
@@ -288,9 +283,4 @@ def proveFormula(formula: str):
     >>> proveFormula('(AND (NOT q) q q)')
     'U'
     """
-    ast = parse(formula)
-
-    if ast is None:
-        return 'E'
-
-    return 'S' if determine_satisfiability(ast) else 'U'
+    return 'S' if determine_satisfiability(parse(formula)) else 'U'
