@@ -270,26 +270,27 @@ def proveFormula(formula: str):
     """
     Implements proveFormula according to grader.py
     >>> proveFormula('p')
-    1
+    'S'
     >>> proveFormula('(NOT (NOT (NOT (NOT not))  )\t)')
-    1
-    >>> proveFormula('(NOT (NOT (NOT (NOT not))  )')
-    'E'
+    'S'
     >>> proveFormula('(IF p p)')
-    'T'
+    'S'
     >>> proveFormula('(AND p (NOT p))')
     'U'
     >>> proveFormula('(OR p (NOT q))')
-    3
+    'S'
+    >>> proveFormula('(OR p (NOT q) q)')
+    'S'
+    >>> proveFormula('(OR (NOT q) q)')
+    'S'
+    >>> proveFormula('(AND (NOT q) q)')
+    'U'
+    >>> proveFormula('(AND (NOT q) q q)')
+    'U'
     """
     ast = parse(formula)
 
     if ast is None:
         return 'E'
 
-    result = determine_satisfiability(ast)
-    if result is True:
-        return 'T'
-    if result is False:
-        return 'U'
-    return result
+    return 'S' if determine_satisfiability(ast) else 'U'
