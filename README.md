@@ -1,6 +1,15 @@
 # proveFormula(F)
 F is input string of an sexp of a PC formula
 Must implement DPLL algorithm
+# DPLL
+- Convert to CNF
+- For each iteration:
+-- Perform 1-literal rule
+-- PErform affirmative negation rule
+-- Perform resolution
+-- If all clauses eliminated: return TRUE
+-- If empty clause: return FALSE
+-- Else, reiterate
 # Input
 May assume well-formed.
 
