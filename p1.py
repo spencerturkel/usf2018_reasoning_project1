@@ -25,6 +25,9 @@ class Op(Enum):
     NOT = 3
     OR = 4
 
+    def __repr__(self):
+        return f'Op.{self.name}'
+
 
 ascii_lowercase_plus_digits = ascii_lowercase + digits
 
@@ -34,17 +37,17 @@ def parse(formula: str):
     Parses a formula string into an AST tuple representation using Op.
 
     >>> parse('(AND (IF p q) (NOT r))')
-    (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'))
+    (Op.AND, (Op.IF, 'p', 'q'), (Op.NOT, 'r'))
     >>> parse('(OR p (NOT q))')
-    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    (Op.OR, 'p', (Op.NOT, 'q'))
     >>> parse(' ( OR p ( NOT q ) ) ')
-    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    (Op.OR, 'p', (Op.NOT, 'q'))
     >>> parse('(AND (IF p q) (NOT r) (OR p q r))') # AND/OR take 2+ args
-    (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'), (<Op.OR: 4>, 'p', 'q', 'r'))
+    (Op.AND, (Op.IF, 'p', 'q'), (Op.NOT, 'r'), (Op.OR, 'p', 'q', 'r'))
     >>> parse('q1')
     'q1'
     >>> parse(' ( OR p ( NOT q ) ) ')
-    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    (Op.OR, 'p', (Op.NOT, 'q'))
     """
     # Implemented as a recursive-descent parser.
     index = 0  # Current view into formula
@@ -251,6 +254,15 @@ def convert_to_cnf(ast):
     Transforms the parsed AST into Conjunctive Normal Form.
     :param ast: Result from parse()
     :return: An AST of the form (Op.AND, ...), where the rest of the AST does NOT have any Op.AND values.
+
+    # >>> convert_to_cnf('x')
+    # 'x'
+    # >>> convert_to_cnf((Op.AND, 'x', 'y'))
+    # (Op.AND, 'x', 'y')
+    # >>> convert_to_cnf(Op.OR, (Op.AND, 'x', 'y'), (Op.AND, 'y', 'z'))
+    # (Op.AND, 'y', (Op.OR, 'x', 'z'))
+    # >>> convert_to_cnf((Op.IF, (Op.IF, (Op.NOT, 'p'), (Op.NOT, 'q')), (Op.IF, 'p', 'q')))
+    # (Op.AND, (Op.OR, (Op.NOT, 'p'), (Op.NOT, 'p'), 'q'), (Op.OR, 'q', (Op.NOT, 'p'), 'q'))
     """
     # TODO
     return ast
