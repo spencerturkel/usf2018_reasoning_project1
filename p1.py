@@ -249,22 +249,77 @@ def determine_satisfiability(ast):
     return False
 
 
+def transform_ifs(node):
+    """
+    >>> transform_ifs((Op.IF, 'x', 'y'))
+    (Op.OR, (Op.NOT, 'x'), 'y')
+    >>> transform_ifs((Op.IF, (Op.IF, (Op.NOT, 'x'), (Op.NOT, 'y')), (Op.IF, 'x', 'y')))
+    (Op.OR, (Op.NOT, (Op.OR, (Op.NOT, (Op.NOT, 'x')), (Op.NOT, 'y'))), (Op.NOT, 'x'), 'y')
+    """
+    if isinstance(node, str):
+        return node
+    transformed_args = tuple(map(transform_ifs, node[1:]))
+    if node[0] == Op.IF:
+        second_arg = transformed_args[1]
+        args_after_first = second_arg[1:] if second_arg[0] == Op.OR else (second_arg,)  # flatten nested ORs
+        return (Op.OR, (Op.NOT, transformed_args[0])) + args_after_first
+    return (node[0],) + transformed_args
+
+
+def push_negations_to_literals(node):
+    """
+    >>> push_negations_to_literals((Op.OR, (Op.NOT, 'x'), 'y'))
+    (Op.OR, (Op.NOT, 'x'), 'y')
+    >>> push_negations_to_literals((Op.NOT, (Op.OR, 'x', 'y')))
+    (Op.AND, (Op.NOT, 'x'), (Op.NOT, 'y'))
+    >>> push_negations_to_literals((Op.NOT, (Op.AND, 'x', 'y')))
+    (Op.OR, (Op.NOT, 'x'), (Op.NOT, 'y'))
+    >>> push_negations_to_literals((Op.NOT, (Op.AND, (Op.NOT, (Op.OR, 'x', 'y')), 'z')))
+    (Op.OR, (Op.NOT, (Op.NOT, 'x')), (Op.NOT, (Op.NOT, 'y')), (Op.NOT, 'z'))
+    >>> push_negations_to_literals((Op.AND, 'x', (Op.NOT, (Op.OR, 'x', 'y')), 'z'))
+    (Op.AND, 'x', (Op.NOT, 'x'), (Op.NOT, 'y'), 'z')
+    >>> push_negations_to_literals((Op.OR, 'x', (Op.NOT, (Op.AND, 'x', 'y')), 'z'))
+    (Op.OR, 'x', (Op.NOT, 'x'), (Op.NOT, 'y'), 'z')
+    """
+    if isinstance(node, str):
+        return node
+    for op in [Op.AND, Op.OR]:
+        if node[0] == op:
+            call = (op,)
+            for arg in (map(push_negations_to_literals, node[1:])):
+                if arg[0] == op:
+                    call += arg[1:]  # flatten nested op
+                else:
+                    call += (arg,)
+            return call
+    # node[0] == Op.NOT
+    arg = node[1]
+    if isinstance(arg, str) or arg[0] == Op.NOT:
+        return Op.NOT, push_negations_to_literals(arg)
+    op = Op.AND if arg[0] == Op.OR else Op.OR
+    call = (op,)
+    for arg in map(push_negations_to_literals, node[1:]):
+        sub_args = tuple(map(lambda x: (Op.NOT, x), arg[1:]))
+        call += sub_args
+    return call
+
 def convert_to_cnf(ast):
     """
     Transforms the parsed AST into Conjunctive Normal Form.
     :param ast: Result from parse()
     :return: An AST of the form (Op.AND, ...), where the rest of the AST does NOT have any Op.AND values.
 
-    # >>> convert_to_cnf('x')
-    # 'x'
-    # >>> convert_to_cnf((Op.AND, 'x', 'y'))
-    # (Op.AND, 'x', 'y')
-    # >>> convert_to_cnf(Op.OR, (Op.AND, 'x', 'y'), (Op.AND, 'y', 'z'))
-    # (Op.AND, 'y', (Op.OR, 'x', 'z'))
-    # >>> convert_to_cnf((Op.IF, (Op.IF, (Op.NOT, 'p'), (Op.NOT, 'q')), (Op.IF, 'p', 'q')))
-    # (Op.AND, (Op.OR, (Op.NOT, 'p'), (Op.NOT, 'p'), 'q'), (Op.OR, 'q', (Op.NOT, 'p'), 'q'))
+    >>> convert_to_cnf('x')
+    'x'
+    >>> convert_to_cnf((Op.AND, 'x', 'y'))
+    (Op.AND, 'x', 'y')
+    >>> convert_to_cnf(Op.OR, (Op.AND, 'x', 'y'), (Op.AND, 'y', 'z'))
+    (Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'x', 'z'), (Op.OR, 'y', 'y'), (Op.OR, 'y', 'z'))
+    >>> convert_to_cnf((Op.IF, (Op.IF, (Op.NOT, 'p'), (Op.NOT, 'q')), (Op.IF, 'p', 'q')))
+    (Op.AND (Op.OR (Op.NOT 'p') (Op.NOT 'p') 'q') (Op.OR 'q' (Op.NOT 'p') 'q')
     """
-    # TODO
+    ast = transform_ifs(ast)
+
     return ast
 
 

@@ -48,6 +48,3 @@ S-exp-list = S-exp | S-exp ws S-exp-list
    2. Remove all clauses containing `p`.
 6. Perform resolution to obtain two new formulas.
 7. Recurse to step 2 with each new formula, returning first `True` result.
-# TODO
-- Update parser and evaluator for multiple args to AND/OR
-- Stub out implementation of DPLL
