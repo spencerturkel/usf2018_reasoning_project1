@@ -359,7 +359,7 @@ def distribute_disjunctions(ast):
     op, *args = ast
     args = map(distribute_disjunctions, args)
     if op == Op.NOT:
-        return (op, *args)
+        return (op,) + tuple(args)
 
     disjunction_lists = [[]]
     for arg in args:
