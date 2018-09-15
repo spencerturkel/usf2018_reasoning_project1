@@ -26,7 +26,7 @@ class Op(Enum):
     OR = 4
 
     def __repr__(self):
-        return f'Op.{self.name}'
+        return 'Op.' + self.name
 
 
 ascii_lowercase_plus_digits = ascii_lowercase + digits
