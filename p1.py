@@ -303,6 +303,80 @@ def push_negations_to_literals(node):
         call += sub_args
     return call
 
+
+def remove_double_negations(ast):
+    """
+    :param ast: Result from parse()
+    :return: An AST where sub-nodes of the form (Op.NOT, (Op.NOT, x)) are replaced with x
+    >>> remove_double_negations('x')
+    'x'
+    >>> remove_double_negations((Op.NOT, 'x'))
+    (Op.NOT, 'x')
+    >>> remove_double_negations((Op.NOT, (Op.NOT, 'x')))
+    'x'
+    >>> remove_double_negations((Op.NOT, (Op.NOT, (Op.NOT, 'x'))))
+    (Op.NOT, 'x')
+    >>> remove_double_negations((Op.AND, 'x', 'y'))
+    (Op.AND, 'x', 'y')
+    """
+    if isinstance(ast, str):
+        return ast
+    op, arg, *_ = ast
+    if op == Op.NOT and arg[0] == Op.NOT:
+        return remove_double_negations(arg[1])
+    return (op,) + tuple(map(remove_double_negations, ast[1:]))
+
+
+def distribute_disjunctions(ast):
+    """
+    >>> distribute_disjunctions('x')
+    'x'
+    >>> distribute_disjunctions((Op.NOT, 'x'))
+    (Op.NOT, 'x')
+    >>> distribute_disjunctions((Op.AND, 'x', 'y'))
+    (Op.AND, 'x', 'y')
+    >>> distribute_disjunctions((Op.OR, 'x', 'y'))
+    (Op.OR, 'x', 'y')
+    >>> distribute_disjunctions((Op.AND, (Op.AND, 'x', 'y'), 'z'))
+    (Op.AND, 'x', 'y', 'z')
+    >>> distribute_disjunctions((Op.OR, (Op.OR, 'x', 'y'), 'z'))
+    (Op.OR, 'x', 'y', 'z')
+    >>> distribute_disjunctions((Op.AND, (Op.OR, 'x', 'y'), 'z'))
+    (Op.AND, (Op.OR, 'x', 'y'), 'z')
+    >>> distribute_disjunctions((Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'x', 'z')))
+    (Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'x', 'z'))
+    >>> distribute_disjunctions((Op.AND, 'p', (Op.OR, 'q', 'r'), 's'))
+    (Op.AND, 'p', (Op.OR, 'q', 'r'), 's')
+    >>> distribute_disjunctions((Op.OR, 'p', (Op.AND, 'q', 'r'), 's'))
+    (Op.AND, (Op.OR, 'p', 'q', 's'), (Op.OR, 'p', 'r', 's'))
+    >>> distribute_disjunctions((Op.OR, (Op.AND, 'q', 'r'), 'p', 's'))
+    (Op.AND, (Op.OR, 'q', 'p', 's'), (Op.OR, 'r', 'p', 's'))
+    >>> distribute_disjunctions((Op.OR, 's', 'p', (Op.AND, 'q', 'r')))
+    (Op.AND, (Op.OR, 's', 'p', 'q'), (Op.OR, 's', 'p', 'r'))
+    """
+    if isinstance(ast, str):
+        return ast
+    op, *args = ast
+    args = map(distribute_disjunctions, args)
+    if op == Op.NOT:
+        return (op, *args)
+
+    disjunction_lists = [[]]
+    for arg in args:
+        arg_op = arg[0]
+        if isinstance(arg, str) or arg_op == Op.NOT or op == Op.AND and arg_op == Op.OR:
+            for l in disjunction_lists:
+                l.append(arg)
+        elif (Op.AND == op == arg_op) or (Op.OR == op == arg_op):
+            for l in disjunction_lists:
+                l.extend(arg[1:])
+        else:  # op == Op.OR and arg_op == Op.AND:
+            disjunction_lists = [l + [x] for x in arg[1:] for l in disjunction_lists]
+    if len(disjunction_lists) == 1:
+        return (op,) + tuple(disjunction_lists[0])
+    return (Op.AND,) + tuple(map(lambda x: tuple([Op.OR] + x), disjunction_lists))
+
+
 def convert_to_cnf(ast):
     """
     Transforms the parsed AST into Conjunctive Normal Form.
@@ -313,13 +387,19 @@ def convert_to_cnf(ast):
     'x'
     >>> convert_to_cnf((Op.AND, 'x', 'y'))
     (Op.AND, 'x', 'y')
-    >>> convert_to_cnf(Op.OR, (Op.AND, 'x', 'y'), (Op.AND, 'y', 'z'))
-    (Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'x', 'z'), (Op.OR, 'y', 'y'), (Op.OR, 'y', 'z'))
+    >>> convert_to_cnf((Op.OR, 'x', 'y'))
+    (Op.OR, 'x', 'y')
+    >>> convert_to_cnf((Op.OR, (Op.AND, 'x', 'y'), (Op.AND, 'y', 'z')))
+    (Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'y', 'y'), (Op.OR, 'x', 'z'), (Op.OR, 'y', 'z'))
     >>> convert_to_cnf((Op.IF, (Op.IF, (Op.NOT, 'p'), (Op.NOT, 'q')), (Op.IF, 'p', 'q')))
-    (Op.AND (Op.OR (Op.NOT 'p') (Op.NOT 'p') 'q') (Op.OR 'q' (Op.NOT 'p') 'q')
+    (Op.AND, (Op.OR, (Op.NOT, 'p'), (Op.NOT, 'p'), 'q'), (Op.OR, 'q', (Op.NOT, 'p'), 'q'))
+    >>> convert_to_cnf((Op.IF, (Op.IF, (Op.NOT, 'q'), (Op.NOT, 'p')), (Op.IF, 'p', 'q')))
+    (Op.AND, (Op.OR, (Op.NOT, 'q'), (Op.NOT, 'p'), 'q'), (Op.OR, 'p', (Op.NOT, 'p'), 'q'))
     """
     ast = transform_ifs(ast)
-
+    ast = push_negations_to_literals(ast)
+    ast = remove_double_negations(ast)
+    ast = distribute_disjunctions(ast)
     return ast
 
 
