@@ -403,6 +403,35 @@ def convert_to_cnf(ast):
     return ast
 
 
+def cnf_as_disjunction_lists(cnf_ast):
+    """
+    Returns the CNF AST as a list of disjunction lists.
+    :param cnf_ast: The result from convert_to_cnf()
+    :return: A list containing the conjoined disjunction lists
+    >>> cnf_as_disjunction_lists('x')
+    [['x']]
+    >>> cnf_as_disjunction_lists((Op.OR, 'x', 'y'))
+    [['x', 'y']]
+    >>> cnf_as_disjunction_lists((Op.AND, 'x', 'y'))
+    [['x'], ['y']]
+    >>> cnf_as_disjunction_lists((Op.AND, 'a', (Op.OR, 'x', 'y')))
+    [['a'], ['x', 'y']]
+    >>> cnf_as_disjunction_lists((Op.AND, (Op.NOT, 'a'), (Op.OR, 'x', (Op.NOT, 'y')), 'z'))
+    [[(Op.NOT, 'a')], ['x', (Op.NOT, 'y')], ['z']]
+    >>> cnf_as_disjunction_lists((Op.AND, (Op.NOT, 'a'), (Op.OR, 'x', (Op.NOT, 'y'), 'b'), 'z', (Op.OR, 'c', 'd')))
+    [[(Op.NOT, 'a')], ['x', (Op.NOT, 'y'), 'b'], ['z'], ['c', 'd']]
+    """
+    if isinstance(cnf_ast, str):
+        return [[cnf_ast]]
+    op = cnf_ast[0]
+    if op == Op.NOT:
+        return [[cnf_ast]]
+    if op == Op.OR:
+        return [list(cnf_ast[1:])]
+    # op == Op.AND:
+    return [list(arg[1:]) if arg[0] == Op.OR else [arg] for arg in cnf_ast[1:]]
+
+
 def dpll(ast):
     """
     Runs the DPLL algorithm on the parsed AST.
