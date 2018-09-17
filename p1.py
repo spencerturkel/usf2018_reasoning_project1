@@ -376,6 +376,79 @@ def distribute_disjunctions(ast):
         return (op,) + tuple(disjunction_lists[0])
     return (Op.AND,) + tuple(map(lambda x: tuple([Op.OR] + x), disjunction_lists))
 
+def pure_literal(ast):
+    """
+    Performs pure-literal rule on CNF formula
+    :param ast: Resule from parse()
+    :return: A CNF with all clauses eliminated by pure-literal removed
+    >>> pure_literal(('x'))
+    'S'
+    >>> pure_literal((Op.AND, 'x', 'y'))
+    'S'
+    >>> pure_literal((Op.OR, 'x', 'y'))
+    'S'
+    >>> pure_literal((Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'y', 'y'), (Op.OR, 'x', 'z'), (Op.OR, 'y', 'z')))
+    'S'
+    >>> pure_literal((Op.AND, (Op.OR, (Op.NOT, 'p'), (Op.NOT, 'p'), 'q'), (Op.OR, 'q', (Op.NOT, 'p'), 'q')))
+    'S'
+    >>> pure_literal((Op.AND, (Op.OR, (Op.NOT, 'q'), (Op.NOT, 'p'), 'q'), (Op.OR, 'p', (Op.NOT, 'p'), 'q')))
+    (Op.AND, (Op.OR, (Op.NOT, 'q'), (Op.NOT, 'p'), 'q'), (Op.OR, 'p', (Op.NOT, 'p'), 'q'))
+    """
+    positive_variables = []
+    negative_variables = []
+
+    temp_ast = list(ast)
+
+    for problem in temp_ast[1:]:
+        # Case for lone variable after And: (And, x, y)
+        if not isinstance(problem, tuple):
+            positive_variables.append(problem)
+        # Case for lone Not after And: (And, (Not x), y)
+        elif problem[0] == Op.NOT:
+            negative_variables.append(problem[1])
+        # Case for Or statement after And: (And, (Or, x, y), y)
+        else:
+            #   Can only be an OR this far down
+            for expression in problem[1:]:
+                # Case for lone variables within a OR statement, which are always positive
+                if not isinstance(expression, tuple) and expression not in positive_variables:
+                    positive_variables.append(expression)
+                # Case for Nots in a OR statement, which are always negative. This assumes proper CNF
+                elif isinstance(expression, tuple):
+                    if expression[1] not in negative_variables:
+                        negative_variables.append(expression[1])
+
+    positive_set = set(positive_variables)
+    negative_set = set(negative_variables)
+
+    positive_only = positive_set - negative_set
+    negative_only = negative_set - positive_set
+
+    for problem in temp_ast[1:]:
+        # Case for lone variable after And: (And, x, y)
+        if not isinstance(problem, tuple) and problem in positive_only:
+            temp_ast.remove(problem)
+        # Case for lone Not after And: (And, (Not x), y)
+        elif problem[0] == Op.NOT and problem[1] in negative_only:
+            temp_ast.remove(problem)
+        # Case for Or statement after And: (And, (Or, x, y), y)
+        else:
+            for expression in problem[1:]:
+                # Case for lone variables within a OR statement
+                if not isinstance(expression, tuple) and expression in positive_only:
+                    temp_ast.remove(problem)
+                    break
+                # Case for Nots in a OR statement
+                elif type(expression) is tuple:
+                    if expression[1] in negative_only:
+                        temp_ast.remove(problem)
+                        break
+
+
+    if len(temp_ast) <= 1:
+        return "S"
+
+    return tuple(temp_ast)
 
 def convert_to_cnf(ast):
     """
