@@ -432,26 +432,30 @@ def dpll(ast):
     return determine_satisfiability(ast)
 
 def resolution(formula):
+
     """
     This function performs resolution on a parsed AST
     returns returns a satisfiable formula if only one variable left EX: (OR a)
     returns returns a unsatisfiable formula if there are no variables left
     returns resolved Formula otherwise
 
-    >>> resolution(AND (OR a b c) (OR (NOT a)  )     )
-    True
-    >>> resolution (AND (OR a b c) (OR (NOT a)) (OR  d e f)  )
-    True
-    >>> resolution (AND (OR a b c) (OR (NOT a)) (OR  d e f) (OR (NOT d) (NOT e) (NOT f)) )
-    False
-    >>> resolution (AND (OR a b c) (OR (NOT a) (NOT b) (NOT c)) )
-    False
-    >>> resolution (AND (OR a b c) (OR (NOT a) (NOT b) ) )
-    True
+    >>> resolution((Op.AND, (Op.OR, 'a', 'b', 'c'), (Op.OR, (Op.NOT, 'a'))))
+    (Op.OR, 'b', 'c')
+    >>> resolution((Op.AND, (Op.OR, 'a', 'b', 'c'), (Op.OR, (Op.NOT, 'a')), (Op.OR, 'd', 'e', 'f')))
+    (Op.OR, 'b', 'c')
+    >>> resolution((Op.AND, (Op.OR, 'a', 'b', 'c'), (Op.OR, (Op.NOT, 'a')), (Op.OR, 'd', 'e', 'f'), (Op.OR, (Op.NOT, 'd'), (Op.NOT, 'e'), (Op.NOT, 'f'))))
+    (Op.AND, 'x', (Op.NOT, 'x'))
+    >>> resolution((Op.AND, (Op.OR, 'a', 'b', 'c'), (Op.OR, (Op.NOT, 'a'), (Op.NOT, 'b'), (Op.NOT, 'c'))))
+    (Op.AND, 'x', (Op.NOT, 'x'))
+    >>> resolution((Op.AND, (Op.OR, 'a', 'b', 'c'), (Op.OR, (Op.NOT, 'a'), (Op.NOT, 'b'))))
+    (Op.NOT, 'x')
 
 
 
     """
+
+    # print("INITIAL FORMULA: ", formula)
+
     if len(formula) == 1:
         return formula
     i = 0
@@ -467,14 +471,12 @@ def resolution(formula):
     while i < len(formula):
         if(len(formula[i])) == 0:
             formula = (Op.AND, 'x', (Op.NOT, 'x'))
-            print(formula, "1")
             return formula
         while j < len(formula[i]):
             var = formula[i][j]
             if var is Op.OR and Op.AND and Op.IF:
                 j+=1
                 if j >= len(formula[i]):
-                    print(formula, "1")
                     return formula
                 elif var == Op.NOT:
                     j+=1
@@ -520,10 +522,10 @@ def resolution(formula):
                             if var2[1] == resolveVar:
                                 resolvedFormula = resolveMatched(formula,i,j,m,n,resolvedFormula)
                                 somethingResolved = True
-                        if resolvedFormula == 'z':
-                            formula = (Op.AND, 'x', (Op.NOT, 'x'))
-                            print(formula,"1")
-                            return formula
+                    if resolvedFormula == 'z':
+
+                        formula = (Op.AND, 'x', (Op.NOT, 'x'))
+                        return formula
                     n+=1
                 m+=1
             j+=1
@@ -549,13 +551,12 @@ def resolution(formula):
                 if formula[a] is not Op.OR:
                     if len(formula[a]) == 1:
                         formula = (Op.NOT, 'x')
-                        print(formula, "1")
                         return formula
             a+=1
-    print(formula, "1")
     return formula
 def resolveMatched(formula, i,j,m,n, resolvedFormula):
     # this function deletes clauses that were resolved and returns a resolvedFormula
+
     z = 0
     tempFormula = ()
     while z < len(formula[i]):
@@ -606,20 +607,24 @@ def resolveMatched(formula, i,j,m,n, resolvedFormula):
             b+=1
         a+=1
     a=0
-
+    if len(tempFormula) == 0:
+        return 'z'
     if tempFormula[0] == Op.OR:
         if len(tempFormula) ==2:
             tempFormula = (tempFormula[1])
     while a < len(tempFormula):
         if len(tempFormula) == 1 and tempFormula[0] is Op.OR:
+
             return 'z'
         elif len(tempFormula) == 1 and tempFormula[0] is Op.NOT:
+
             return 'z'
         a+=1
     tempFormula = tuple(tempFormula)
     resolvedFormula = (resolvedFormula) + ((tempFormula,))
 
     return resolvedFormula
+
 
 
 # noinspection PyPep8Naming
