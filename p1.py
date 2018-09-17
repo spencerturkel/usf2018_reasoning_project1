@@ -431,6 +431,196 @@ def dpll(ast):
     # TODO
     return determine_satisfiability(ast)
 
+def resolution(formula):
+    """
+    This function performs resolution on a parsed AST
+    returns returns a satisfiable formula if only one variable left EX: (OR a)
+    returns returns a unsatisfiable formula if there are no variables left
+    returns resolved Formula otherwise
+
+    >>> resolution(AND (OR a b c) (OR (NOT a)  )     )
+    True
+    >>> resolution (AND (OR a b c) (OR (NOT a)) (OR  d e f)  )
+    True
+    >>> resolution (AND (OR a b c) (OR (NOT a)) (OR  d e f) (OR (NOT d) (NOT e) (NOT f)) )
+    False
+    >>> resolution (AND (OR a b c) (OR (NOT a) (NOT b) (NOT c)) )
+    False
+    >>> resolution (AND (OR a b c) (OR (NOT a) (NOT b) ) )
+    True
+
+
+
+    """
+    if len(formula) == 1:
+        return formula
+    i = 0
+    if formula[i] != Op.AND:
+        return formula
+
+    i+=1
+    j=0
+    somethingResolved = False
+    resolvedFormula = ((Op.AND,))
+
+    # loops through entire formula looking for negation of current variable
+    while i < len(formula):
+        if(len(formula[i])) == 0:
+            formula = (Op.AND, 'x', (Op.NOT, 'x'))
+            print(formula, "1")
+            return formula
+        while j < len(formula[i]):
+            var = formula[i][j]
+            if var is Op.OR and Op.AND and Op.IF:
+                j+=1
+                if j >= len(formula[i]):
+                    print(formula, "1")
+                    return formula
+                elif var == Op.NOT:
+                    j+=1
+                    resolveVar = '~' + formula[i][j]
+                elif len(formula[i][j]) == 2:
+                    resolveVar = '~' + formula[i][j][1]
+                else:
+                    resolveVar = formula[i][j]
+            else:
+                if var == Op.NOT:
+                    j+=1
+                    resolveVar = '~' + formula[i][j]
+                elif len(formula[i][j]) == 2:
+                    resolveVar = '~' + formula[i][j][1]
+                else:
+                    resolveVar = formula[i][j]
+
+            m = i +1
+            n = 0
+
+            # loops through formula to find negation of resolveVar
+            while m < len(formula):
+                n=0
+                while n < len(formula[m]):
+                    var2 = formula[m][n]
+                    if len(resolveVar) == 2:
+                        if var2 is Op.OR and Op.AND and Op.IF:
+                            pass
+                        else:
+                            if var2 == resolveVar[1]:
+                                resolvedFormula = resolveMatched(formula, i, j, m, n, resolvedFormula)
+                                somethingResolved = True
+                    else:
+                        if var2 is Op.OR and Op.AND and Op.IF:
+                            pass
+                        elif var2 == Op.NOT:
+                            n+=1
+                            var2 = formula[m][n]
+                            if var2 == resolveVar:
+                                resolvedFormula = resolveMatched(formula, i, j, m, n, resolvedFormula)
+                                somethingResolved = True
+                        elif len(var2) == 2:
+                            if var2[1] == resolveVar:
+                                resolvedFormula = resolveMatched(formula,i,j,m,n,resolvedFormula)
+                                somethingResolved = True
+                        if resolvedFormula == 'z':
+                            formula = (Op.AND, 'x', (Op.NOT, 'x'))
+                            print(formula,"1")
+                            return formula
+                    n+=1
+                m+=1
+            j+=1
+
+        # if current list wasn't resolved, add it to resolvedFormula
+        if somethingResolved == False:
+            resolvedFormula = (resolvedFormula) + ((formula[i],))
+        i+=1
+        j=0
+
+
+
+    # if list = (AND (OR variables v)) remove initial AND
+    if formula[0] is Op.AND and len(formula) ==2:
+        formula = formula[1]
+    # performs resolve on new formula if something was resolved
+    elif somethingResolved:
+        formula = resolution(resolvedFormula)
+    else:
+        a = 0
+        while a < len(formula):
+            if formula[a] is not Op.AND:
+                if formula[a] is not Op.OR:
+                    if len(formula[a]) == 1:
+                        formula = (Op.NOT, 'x')
+                        print(formula, "1")
+                        return formula
+            a+=1
+    print(formula, "1")
+    return formula
+def resolveMatched(formula, i,j,m,n, resolvedFormula):
+    # this function deletes clauses that were resolved and returns a resolvedFormula
+    z = 0
+    tempFormula = ()
+    while z < len(formula[i]):
+        if z is not j:
+            tempFormula = tempFormula + (formula[i][z],)
+        z += 1
+    z = 1
+    while z < len(formula[m]):
+        if z is not n:
+            tempFormula = tempFormula + (formula[m][z],)
+        z += 1
+    a = 0
+
+    while a < len(tempFormula):
+        b = a +1
+        if type(tempFormula[a]) is Op:
+            pass
+        else:
+            while b < len(tempFormula):
+                if tempFormula[a] == tempFormula[b]:
+                    tempFormula = list(tempFormula)
+                    del tempFormula[a]
+                    a = 0
+                b+=1
+        a+=1
+    a = 0
+
+    while a < len(tempFormula):
+        b = a+1
+        while b < len(tempFormula):
+            if type(tempFormula[a]) is Op.NOT:
+                pass
+            elif type(tempFormula[a]) is Op:
+                pass
+            elif len(tempFormula[a]) == 2:
+                if tempFormula[a][1] == tempFormula[b]:
+                    tempFormula = list(tempFormula)
+                    del tempFormula[a]
+                    del tempFormula[b-1]
+                    a-=2
+            else:
+                if len(tempFormula[b]) == 2:
+                    if tempFormula[a] == tempFormula[b][1]:
+                        tempFormula = list(tempFormula)
+                        del tempFormula[a]
+                        del tempFormula[b-1]
+                        a-=2
+            b+=1
+        a+=1
+    a=0
+
+    if tempFormula[0] == Op.OR:
+        if len(tempFormula) ==2:
+            tempFormula = (tempFormula[1])
+    while a < len(tempFormula):
+        if len(tempFormula) == 1 and tempFormula[0] is Op.OR:
+            return 'z'
+        elif len(tempFormula) == 1 and tempFormula[0] is Op.NOT:
+            return 'z'
+        a+=1
+    tempFormula = tuple(tempFormula)
+    resolvedFormula = (resolvedFormula) + ((tempFormula,))
+
+    return resolvedFormula
+
 
 # noinspection PyPep8Naming
 def proveFormula(formula: str):

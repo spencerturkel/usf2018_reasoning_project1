@@ -31,7 +31,7 @@ def prnt(S):
 	print(S)
 
 try:
-	F = open("hw1.py", 'r')
+	F = open("p1.py", 'r')
 	exec("".join(F.readlines()))
 except Exception as e:
 	prnt("Couldn't open or execute 'hw1.py': " + str(traceback.format_exc()))
