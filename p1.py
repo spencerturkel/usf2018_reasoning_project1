@@ -25,6 +25,9 @@ class Op(Enum):
     NOT = 3
     OR = 4
 
+    def __repr__(self):
+        return 'Op.' + self.name
+
 
 ascii_lowercase_plus_digits = ascii_lowercase + digits
 
@@ -34,17 +37,17 @@ def parse(formula: str):
     Parses a formula string into an AST tuple representation using Op.
 
     >>> parse('(AND (IF p q) (NOT r))')
-    (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'))
+    (Op.AND, (Op.IF, 'p', 'q'), (Op.NOT, 'r'))
     >>> parse('(OR p (NOT q))')
-    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    (Op.OR, 'p', (Op.NOT, 'q'))
     >>> parse(' ( OR p ( NOT q ) ) ')
-    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    (Op.OR, 'p', (Op.NOT, 'q'))
     >>> parse('(AND (IF p q) (NOT r) (OR p q r))') # AND/OR take 2+ args
-    (<Op.AND: 1>, (<Op.IF: 2>, 'p', 'q'), (<Op.NOT: 3>, 'r'), (<Op.OR: 4>, 'p', 'q', 'r'))
+    (Op.AND, (Op.IF, 'p', 'q'), (Op.NOT, 'r'), (Op.OR, 'p', 'q', 'r'))
     >>> parse('q1')
     'q1'
     >>> parse(' ( OR p ( NOT q ) ) ')
-    (<Op.OR: 4>, 'p', (<Op.NOT: 3>, 'q'))
+    (Op.OR, 'p', (Op.NOT, 'q'))
     """
     # Implemented as a recursive-descent parser.
     index = 0  # Current view into formula
@@ -246,13 +249,157 @@ def determine_satisfiability(ast):
     return False
 
 
+def transform_ifs(node):
+    """
+    >>> transform_ifs((Op.IF, 'x', 'y'))
+    (Op.OR, (Op.NOT, 'x'), 'y')
+    >>> transform_ifs((Op.IF, (Op.IF, (Op.NOT, 'x'), (Op.NOT, 'y')), (Op.IF, 'x', 'y')))
+    (Op.OR, (Op.NOT, (Op.OR, (Op.NOT, (Op.NOT, 'x')), (Op.NOT, 'y'))), (Op.NOT, 'x'), 'y')
+    """
+    if isinstance(node, str):
+        return node
+    transformed_args = tuple(map(transform_ifs, node[1:]))
+    if node[0] == Op.IF:
+        second_arg = transformed_args[1]
+        args_after_first = second_arg[1:] if second_arg[0] == Op.OR else (second_arg,)  # flatten nested ORs
+        return (Op.OR, (Op.NOT, transformed_args[0])) + args_after_first
+    return (node[0],) + transformed_args
+
+
+def push_negations_to_literals(node):
+    """
+    >>> push_negations_to_literals((Op.OR, (Op.NOT, 'x'), 'y'))
+    (Op.OR, (Op.NOT, 'x'), 'y')
+    >>> push_negations_to_literals((Op.NOT, (Op.OR, 'x', 'y')))
+    (Op.AND, (Op.NOT, 'x'), (Op.NOT, 'y'))
+    >>> push_negations_to_literals((Op.NOT, (Op.AND, 'x', 'y')))
+    (Op.OR, (Op.NOT, 'x'), (Op.NOT, 'y'))
+    >>> push_negations_to_literals((Op.NOT, (Op.AND, (Op.NOT, (Op.OR, 'x', 'y')), 'z')))
+    (Op.OR, (Op.NOT, (Op.NOT, 'x')), (Op.NOT, (Op.NOT, 'y')), (Op.NOT, 'z'))
+    >>> push_negations_to_literals((Op.AND, 'x', (Op.NOT, (Op.OR, 'x', 'y')), 'z'))
+    (Op.AND, 'x', (Op.NOT, 'x'), (Op.NOT, 'y'), 'z')
+    >>> push_negations_to_literals((Op.OR, 'x', (Op.NOT, (Op.AND, 'x', 'y')), 'z'))
+    (Op.OR, 'x', (Op.NOT, 'x'), (Op.NOT, 'y'), 'z')
+    """
+    if isinstance(node, str):
+        return node
+    for op in [Op.AND, Op.OR]:
+        if node[0] == op:
+            call = (op,)
+            for arg in (map(push_negations_to_literals, node[1:])):
+                if arg[0] == op:
+                    call += arg[1:]  # flatten nested op
+                else:
+                    call += (arg,)
+            return call
+    # node[0] == Op.NOT
+    arg = node[1]
+    if isinstance(arg, str) or arg[0] == Op.NOT:
+        return Op.NOT, push_negations_to_literals(arg)
+    op = Op.AND if arg[0] == Op.OR else Op.OR
+    call = (op,)
+    for arg in map(push_negations_to_literals, node[1:]):
+        sub_args = tuple(map(lambda x: (Op.NOT, x), arg[1:]))
+        call += sub_args
+    return call
+
+
+def remove_double_negations(ast):
+    """
+    :param ast: Result from parse()
+    :return: An AST where sub-nodes of the form (Op.NOT, (Op.NOT, x)) are replaced with x
+    >>> remove_double_negations('x')
+    'x'
+    >>> remove_double_negations((Op.NOT, 'x'))
+    (Op.NOT, 'x')
+    >>> remove_double_negations((Op.NOT, (Op.NOT, 'x')))
+    'x'
+    >>> remove_double_negations((Op.NOT, (Op.NOT, (Op.NOT, 'x'))))
+    (Op.NOT, 'x')
+    >>> remove_double_negations((Op.AND, 'x', 'y'))
+    (Op.AND, 'x', 'y')
+    """
+    if isinstance(ast, str):
+        return ast
+    op, arg, *_ = ast
+    if op == Op.NOT and arg[0] == Op.NOT:
+        return remove_double_negations(arg[1])
+    return (op,) + tuple(map(remove_double_negations, ast[1:]))
+
+
+def distribute_disjunctions(ast):
+    """
+    >>> distribute_disjunctions('x')
+    'x'
+    >>> distribute_disjunctions((Op.NOT, 'x'))
+    (Op.NOT, 'x')
+    >>> distribute_disjunctions((Op.AND, 'x', 'y'))
+    (Op.AND, 'x', 'y')
+    >>> distribute_disjunctions((Op.OR, 'x', 'y'))
+    (Op.OR, 'x', 'y')
+    >>> distribute_disjunctions((Op.AND, (Op.AND, 'x', 'y'), 'z'))
+    (Op.AND, 'x', 'y', 'z')
+    >>> distribute_disjunctions((Op.OR, (Op.OR, 'x', 'y'), 'z'))
+    (Op.OR, 'x', 'y', 'z')
+    >>> distribute_disjunctions((Op.AND, (Op.OR, 'x', 'y'), 'z'))
+    (Op.AND, (Op.OR, 'x', 'y'), 'z')
+    >>> distribute_disjunctions((Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'x', 'z')))
+    (Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'x', 'z'))
+    >>> distribute_disjunctions((Op.AND, 'p', (Op.OR, 'q', 'r'), 's'))
+    (Op.AND, 'p', (Op.OR, 'q', 'r'), 's')
+    >>> distribute_disjunctions((Op.OR, 'p', (Op.AND, 'q', 'r'), 's'))
+    (Op.AND, (Op.OR, 'p', 'q', 's'), (Op.OR, 'p', 'r', 's'))
+    >>> distribute_disjunctions((Op.OR, (Op.AND, 'q', 'r'), 'p', 's'))
+    (Op.AND, (Op.OR, 'q', 'p', 's'), (Op.OR, 'r', 'p', 's'))
+    >>> distribute_disjunctions((Op.OR, 's', 'p', (Op.AND, 'q', 'r')))
+    (Op.AND, (Op.OR, 's', 'p', 'q'), (Op.OR, 's', 'p', 'r'))
+    """
+    if isinstance(ast, str):
+        return ast
+    op, *args = ast
+    args = map(distribute_disjunctions, args)
+    if op == Op.NOT:
+        return (op,) + tuple(args)
+
+    disjunction_lists = [[]]
+    for arg in args:
+        arg_op = arg[0]
+        if isinstance(arg, str) or arg_op == Op.NOT or op == Op.AND and arg_op == Op.OR:
+            for l in disjunction_lists:
+                l.append(arg)
+        elif (Op.AND == op == arg_op) or (Op.OR == op == arg_op):
+            for l in disjunction_lists:
+                l.extend(arg[1:])
+        else:  # op == Op.OR and arg_op == Op.AND:
+            disjunction_lists = [l + [x] for x in arg[1:] for l in disjunction_lists]
+    if len(disjunction_lists) == 1:
+        return (op,) + tuple(disjunction_lists[0])
+    return (Op.AND,) + tuple(map(lambda x: tuple([Op.OR] + x), disjunction_lists))
+
+
 def convert_to_cnf(ast):
     """
     Transforms the parsed AST into Conjunctive Normal Form.
     :param ast: Result from parse()
     :return: An AST of the form (Op.AND, ...), where the rest of the AST does NOT have any Op.AND values.
+
+    >>> convert_to_cnf('x')
+    'x'
+    >>> convert_to_cnf((Op.AND, 'x', 'y'))
+    (Op.AND, 'x', 'y')
+    >>> convert_to_cnf((Op.OR, 'x', 'y'))
+    (Op.OR, 'x', 'y')
+    >>> convert_to_cnf((Op.OR, (Op.AND, 'x', 'y'), (Op.AND, 'y', 'z')))
+    (Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'y', 'y'), (Op.OR, 'x', 'z'), (Op.OR, 'y', 'z'))
+    >>> convert_to_cnf((Op.IF, (Op.IF, (Op.NOT, 'p'), (Op.NOT, 'q')), (Op.IF, 'p', 'q')))
+    (Op.AND, (Op.OR, (Op.NOT, 'p'), (Op.NOT, 'p'), 'q'), (Op.OR, 'q', (Op.NOT, 'p'), 'q'))
+    >>> convert_to_cnf((Op.IF, (Op.IF, (Op.NOT, 'q'), (Op.NOT, 'p')), (Op.IF, 'p', 'q')))
+    (Op.AND, (Op.OR, (Op.NOT, 'q'), (Op.NOT, 'p'), 'q'), (Op.OR, 'p', (Op.NOT, 'p'), 'q'))
     """
-    # TODO
+    ast = transform_ifs(ast)
+    ast = push_negations_to_literals(ast)
+    ast = remove_double_negations(ast)
+    ast = distribute_disjunctions(ast)
     return ast
 
 
