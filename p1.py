@@ -596,7 +596,6 @@ def dpll(ast):
 
 
 def resolution(formula):
-
     """
     This function performs resolution on a parsed AST
     returns returns a satisfiable formula if only one variable left EX: (OR a)
@@ -617,83 +616,59 @@ def resolution(formula):
     [['b', 'c', (Op.NOT, 'b'), (Op.NOT, 'c')], ['a', 'c', (Op.NOT, 'c')], ['a', 'b', (Op.NOT, 'b')]]
     >>> resolution([['a', (Op.NOT, 'b'), 'c'], ['a', 'b', 'f']])
     [['a', 'c', 'f']]
-
-
-
     """
-
-    # print("INITIAL FORMULA: ", formula)
 
     if len(formula) == 1:
         return formula
-
     i = 0
-
-
     j=0
-
     resolvedFormula = []
-
     resolvedClauses = [False] *len(formula)
+
+    # iterates through entire formula and adds resolved clauses to resolvedFormula
     while i < len(formula):
         while j < len(formula[i]):
-
             var = formula[i][j]
             m = i+1
             while m < len(formula):
                 n = 0
                 while n < len(formula[m]):
-
                     checkingVariable = formula[m][n]
                     if len(var) == 2:
-
                         if var[1] == checkingVariable:
                             tempFormula = resolveMatched(formula, i, j, m, n, resolvedFormula)
                             if tempFormula == 'z':
                                 pass
-                                # print("ERROR")
                             else:
                                 resolvedFormula = tempFormula
-                                # print("RESOLVED FORMULA: ", (resolvedFormula))
                             resolvedClauses[i] = True
                             resolvedClauses[m] = True
-
                     else:
-
                         if len(checkingVariable) == 2:
-
                             if var == checkingVariable[1]:
-
                                 tempFormula = resolveMatched(formula, i, j, m, n, resolvedFormula)
                                 if tempFormula == 'z':
                                     pass
-                                    # print("ERROR")
                                 else:
                                     resolvedFormula = tempFormula
-                                    # print("RESOLVED FORMULA: ", (resolvedFormula))
                                 resolvedClauses[i] = True
                                 resolvedClauses[m] = True
-
                     n+=1
-
                 m+=1
-
             j+=1
-
         j=0
         i+=1
 
     q = 0
+    # checks to see if any clauses weren't resolved and adds to resolveFormula
     while q < len(formula):
-        # print("RESOLVED? ", formula[q], resolvedClauses[q])
         if resolvedClauses[q] == False:
             resolvedFormula = resolvedFormula + [formula[q]]
         q += 1
-    # print("FINAL RESOLVED: " , resolvedFormula)
+
     return resolvedFormula
 def resolveMatched(formula, i,j,m,n, resolvedFormula):
     # this function deletes clauses that were resolved and returns a resolvedFormula
-
     z = 0
     tempFormula = ()
 
@@ -749,8 +724,6 @@ def resolveMatched(formula, i,j,m,n, resolvedFormula):
     tempFormula = list(tempFormula)
     resolvedFormula = (resolvedFormula) + [tempFormula]
     return resolvedFormula
-
-
 
 # noinspection PyPep8Naming
 def proveFormula(formula: str):
