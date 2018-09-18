@@ -1,3 +1,11 @@
+"""
+Group members:
+Zach Meyer
+Matt Monnik
+Jacob Schioppo
+Spencer Turkel
+"""
+
 from enum import Enum
 from itertools import combinations
 from string import ascii_lowercase, digits, whitespace
