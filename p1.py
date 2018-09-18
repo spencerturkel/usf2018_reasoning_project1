@@ -432,6 +432,67 @@ def cnf_as_disjunction_lists(cnf_ast):
     return [list(arg[1:]) if arg[0] == Op.OR else [arg] for arg in cnf_ast[1:]]
 
 
+def one_literal_rule(clauses):
+    """
+    Applies the one-literal rule to the clauses.
+    :param clauses: The output from cnf_to_disjunction_lists(), representing a CNF formula.
+    :return: A new CNF formula in the same format as the input, with equisatisfiability.
+
+    >>> one_literal_rule([])
+    []
+    >>> one_literal_rule([['a']])
+    [['a']]
+    >>> one_literal_rule([[(Op.NOT, 'a')]])
+    [[(Op.NOT, 'a')]]
+    >>> one_literal_rule([['a', 'b']])
+    [['a', 'b']]
+    >>> one_literal_rule([['a', 'b'], ['a']])
+    [['a']]
+    >>> one_literal_rule([['a', 'b'], ['a'], ['b']])
+    [['a'], ['b']]
+    >>> one_literal_rule([['a'], ['b']])
+    [['a'], ['b']]
+    >>> one_literal_rule([['a', 'b'], [(Op.NOT, 'a'), 'c'], [(Op.NOT, 'c'), 'd'], ['a']])
+    [['c'], ['d'], ['a']]
+    """
+    changed = True
+    while changed:
+        changed = False
+        for prop in clauses:
+            if len(prop) != 1:
+                continue
+            new_clauses = []
+            literal = prop[0]
+            if literal[0] == Op.NOT:
+                for disjunction in clauses:
+                    if disjunction == prop:
+                        new_clauses.append(disjunction)
+                        continue
+                    variable = literal[1]
+                    if any(filter(lambda p: p[0] == Op.NOT and p[1] == variable, disjunction)):
+                        changed = True
+                        continue
+                    reduced_disjunction = list(filter(lambda p: p == variable, disjunction))
+                    if len(disjunction) != len(reduced_disjunction):
+                        changed = True
+                    new_clauses.append(reduced_disjunction)
+            else:
+                for disjunction in clauses:
+                    if disjunction == prop:
+                        new_clauses.append(disjunction)
+                        continue
+                    if any(filter(lambda p: p == literal, disjunction)):
+                        changed = True
+                        continue
+                    reduced_disjunction = list(filter(lambda p: p[0] != Op.NOT or p[1] != literal, disjunction))
+                    if len(disjunction) != len(reduced_disjunction):
+                        changed = True
+                    new_clauses.append(reduced_disjunction)
+            clauses = new_clauses
+        if not changed:
+            return clauses
+
+
 def dpll(ast):
     """
     Runs the DPLL algorithm on the parsed AST.
