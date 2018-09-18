@@ -550,7 +550,7 @@ def pure_literal_list_form(ast_set):
         if not elim_clause:
             new_ast.append(expression)
 
-    print(new_ast)
+    return(new_ast)
 
 
 def dpll(ast):
