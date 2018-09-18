@@ -607,13 +607,17 @@ def dpll(ast):
     'S'
     >>> dpll((Op.NOT, (Op.OR, 'x', (Op.OR, 'y', 'z'))))
     'S'
+    >>> dpll((Op.OR, 'p', (Op.NOT, 'p')))
+    'S'
+    >>> dpll((Op.OR, 'p', (Op.NOT, 'p'), 'q', (Op.NOT, 'q')))
+    'S'
     """
     subformulas = [cnf_as_disjunction_lists(convert_to_cnf(ast))]
     while subformulas:
         formula = subformulas.pop()
         if not formula:
             return 'S'
-        if not any(formula):
+        if not all(formula):
             return 'U'
         formula = one_literal_rule(formula)
         if isinstance(formula, str):
