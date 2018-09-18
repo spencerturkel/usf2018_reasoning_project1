@@ -625,7 +625,6 @@ def dpll(ast):
             return formula
         subformulas.extend(branch_formula(formula))
     return False
->>>>>>> master
 
 
 def resolution(formula):
