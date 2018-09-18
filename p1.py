@@ -629,26 +629,26 @@ def dpll(ast):
 
 def resolution(formula):
     """
-        This function performs resolution on a parsed AST
-        returns returns a satisfiable formula if only one variable left EX: (OR a)
-        returns returns a unsatisfiable formula if there are no variables left
-        returns resolved Formula otherwise
+    This function performs resolution on a parsed AST
+    returns returns a satisfiable formula if only one variable left EX: (OR a)
+    returns returns a unsatisfiable formula if there are no variables left
+    returns resolved Formula otherwise
         
-        >>> resolution([['a'], [(Op.NOT, 'a'), 'b']])
-        [['b']]
-        >>> resolution([['a', 'b', 'c'], ['d', 'e', 'f'], [(Op.NOT, 'a'), 'g', 'h'], ['a', 'x', 'y']])
-        [['b', 'c', 'g', 'h'], ['g', 'h', 'x', 'y'], ['d', 'e', 'f']]
-        >>> resolution([['a', 'b', 'c'], ['d', 'e', 'f'], [(Op.NOT, 'a'), 'g', 'h']])
-        [['b', 'c', 'g', 'h'], ['d', 'e', 'f']]
-        >>> resolution([['a'], [(Op.NOT, 'a')]])
-        'U'
-        >>> resolution([['a', 'b', 'c'], [(Op.NOT, 'a')]])
-        [['b', 'c']]
-        >>> resolution([['a', 'b', 'c'], [(Op.NOT, 'a'), (Op.NOT, 'b'), (Op.NOT, 'c')]])
-        [['b', 'c', (Op.NOT, 'b'), (Op.NOT, 'c')], ['a', 'c', (Op.NOT, 'c')], ['a', 'b', (Op.NOT, 'b')]]
-        >>> resolution([['a', (Op.NOT, 'b'), 'c'], ['a', 'b', 'f']])
-        [['a', 'c', 'f']]
-        """
+    >>> resolution([['a'], [(Op.NOT, 'a'), 'b']])
+    [['b']]
+    >>> resolution([['a', 'b', 'c'], ['d', 'e', 'f'], [(Op.NOT, 'a'), 'g', 'h'], ['a', 'x', 'y']])
+    [['b', 'c', 'g', 'h'], ['g', 'h', 'x', 'y'], ['d', 'e', 'f']]
+    >>> resolution([['a', 'b', 'c'], ['d', 'e', 'f'], [(Op.NOT, 'a'), 'g', 'h']])
+    [['b', 'c', 'g', 'h'], ['d', 'e', 'f']]
+    >>> resolution([['a'], [(Op.NOT, 'a')]])
+    'U'
+    >>> resolution([['a', 'b', 'c'], [(Op.NOT, 'a')]])
+    [['b', 'c']]
+    >>> resolution([['a', 'b', 'c'], [(Op.NOT, 'a'), (Op.NOT, 'b'), (Op.NOT, 'c')]])
+    [['b', 'c', (Op.NOT, 'b'), (Op.NOT, 'c')], ['a', 'c', (Op.NOT, 'c')], ['a', 'b', (Op.NOT, 'b')]]
+    >>> resolution([['a', (Op.NOT, 'b'), 'c'], ['a', 'b', 'f']])
+    [['a', 'c', 'f']]
+    """
     
     if len(formula) == 1:
         return formula
@@ -755,7 +755,7 @@ def resolveMatched(formula, i,j,m,n, resolvedFormula):
         a+=1
     tempFormula = list(tempFormula)
     resolvedFormula = (resolvedFormula) + [tempFormula]
-                return resolvedFormula
+    return resolvedFormula
 
 # noinspection PyPep8Naming
 def proveFormula(formula: str):
