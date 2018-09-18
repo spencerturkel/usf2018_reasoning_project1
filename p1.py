@@ -504,6 +504,54 @@ def cnf_as_disjunction_lists(cnf_ast):
     # op == Op.AND:
     return [list(arg[1:]) if arg[0] == Op.OR else [arg] for arg in cnf_ast[1:]]
 
+def pure_literal_list_form(ast_set):
+    """
+    Performs pure literal rule on list format CNF
+    :param: Result of cnf_as_disjunction_lists
+    :return: CNF with clauses eliminated
+    >>> pure_literal_list_form([['a']])
+    []
+    >>> pure_literal_list_form([[(Op.NOT, 'a')], ['x', (Op.NOT, 'y'), 'b'], ['z'], ['c', 'd']])
+    []
+    >>> pure_literal_list_form([[(Op.NOT, 'a')], ['a', (Op.NOT, 'c')]])
+    [[(Op.NOT, 'a')]]
+    >>> pure_literal_list_form([['a'], [(Op.NOT, 'a')], ['b']])
+    [['a'], [(Op.NOT, 'a')]]
+    >>> pure_literal_list_form([[(Op.NOT, 'a')], ['a', (Op.NOT, 'c')], ['c']])
+    [[(Op.NOT, 'a')], ['a', (Op.NOT, 'c')], ['c']]
+    >>> pure_literal_list_form([[(Op.NOT, 'a')], [(Op.NOT, 'b')], ['a', 'b'], ['c']])
+    [[(Op.NOT, 'a')], [(Op.NOT, 'b')], ['a', 'b']]
+    >>> pure_literal_list_form([['a', 'b', (Op.NOT, 'c'), (Op.NOT, 'b')], ['d', (Op.NOT, 'e'), (Op.NOT, 'b'), 'e'], [(Op.NOT, 'a'), (Op.NOT, 'b'), 'c']])
+    [['a', 'b', (Op.NOT, 'c'), (Op.NOT, 'b')], [(Op.NOT, 'a'), (Op.NOT, 'b'), 'c']]
+    """
+    positive_variables = []
+    negative_variables = []
+    new_ast = []
+
+    for expression in ast_set:
+        for segment in expression:
+            # Case for NOTs
+            if isinstance(segment, tuple):
+                negative_variables.append(segment[1])
+            # Case for lone variables
+            else:
+                positive_variables.append(segment)
+
+    positive_only = set(positive_variables) - set(negative_variables)
+    negative_only = set(negative_variables) - set(positive_variables)
+
+    for expression in ast_set:
+        elim_clause = False
+        for segment in expression:
+            if isinstance(segment, tuple) and segment[1] in negative_only:
+                elim_clause = True
+            elif segment in positive_only:
+                elim_clause = True
+        if not elim_clause:
+            new_ast.append(expression)
+
+    return(new_ast)
+
 
 def one_literal_rule(clauses):
     """
