@@ -593,7 +593,7 @@ def dpll(ast):
     ast = cnf_as_disjunction_lists(ast)
     # TODO
     ast = resolution(ast)
-
+    print(ast)
 
 def resolution(formula):
     """
@@ -609,7 +609,7 @@ def resolution(formula):
     >>> resolution([['a', 'b', 'c'], ['d', 'e', 'f'], [(Op.NOT, 'a'), 'g', 'h']])
     [['b', 'c', 'g', 'h'], ['d', 'e', 'f']]
     >>> resolution([['a'], [(Op.NOT, 'a')]])
-    []
+    'U'
     >>> resolution([['a', 'b', 'c'], [(Op.NOT, 'a')]])
     [['b', 'c']]
     >>> resolution([['a', 'b', 'c'], [(Op.NOT, 'a'), (Op.NOT, 'b'), (Op.NOT, 'c')]])
@@ -638,7 +638,7 @@ def resolution(formula):
                         if var[1] == checkingVariable:
                             tempFormula = resolveMatched(formula, i, j, m, n, resolvedFormula)
                             if tempFormula == 'z':
-                                pass
+                                return 'U'
                             else:
                                 resolvedFormula = tempFormula
                             resolvedClauses[i] = True
@@ -648,7 +648,7 @@ def resolution(formula):
                             if var == checkingVariable[1]:
                                 tempFormula = resolveMatched(formula, i, j, m, n, resolvedFormula)
                                 if tempFormula == 'z':
-                                    pass
+                                    return 'U'
                                 else:
                                     resolvedFormula = tempFormula
                                 resolvedClauses[i] = True
