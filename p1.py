@@ -376,6 +376,7 @@ def distribute_disjunctions(ast):
         return (op,) + tuple(disjunction_lists[0])
     return (Op.AND,) + tuple(map(lambda x: tuple([Op.OR] + x), disjunction_lists))
 
+
 def pure_literal(ast):
     """
     Performs pure-literal rule on CNF formula
@@ -444,11 +445,11 @@ def pure_literal(ast):
                         temp_ast.remove(problem)
                         break
 
-
     if len(temp_ast) <= 1:
         return "S"
 
     return tuple(temp_ast)
+
 
 def convert_to_cnf(ast):
     """
@@ -566,33 +567,80 @@ def one_literal_rule(clauses):
             return clauses
 
 
+def resolution(clauses):
+    # TODO
+    return clauses
+
+
+def branch_formula(clauses):
+    """
+    Returns two formulas, one for each possible assignment of the first literal in the clauses.
+
+    :param clauses: output from cnf_as_disjunction_lists()
+    :return: Two formulas, one for each possible assignment of the first literal in the clauses.
+
+    >>> branch_formula([])
+    ([], [])
+    >>> branch_formula([['x']])
+    ([], [[]])
+    >>> branch_formula([['x'], [(Op.NOT, 'x')]])
+    ([[]], [[]])
+    >>> branch_formula([['x'], [(Op.NOT, 'x'), 'y']])
+    ([['y']], [[]])
+    """
+    for disjunction in clauses:
+        for prop in disjunction:
+            if prop == Op.NOT:
+                prop = prop[1]
+            true_branch = list(filter(lambda c: prop not in c,
+                                      map(lambda c: list(filter(lambda p: p[0] != Op.NOT or p[1] != prop, c)),
+                                          clauses)))
+            false_branch = list(filter(lambda c: not any(filter(lambda p: p[0] == Op.NOT and p[1] == prop, c)),
+                                       map(lambda c: list(filter(lambda p: p != prop, c)), clauses)))
+            return true_branch, false_branch
+    return clauses, clauses
+
+
 def dpll(ast):
     """
     Runs the DPLL algorithm on the parsed AST.
 
-    This function should always agree with determine_satisfiability(ast).
-
     :param ast: Result from parse()
-    :return: True if satisfiable, False if unsatisfiable
+    :return: 'S' if satisfiable, 'U' if unsatisfiable
 
     >>> dpll('x')
-    True
+    'S'
     >>> dpll((Op.NOT, 'x'))
-    True
+    'S'
     >>> dpll((Op.OR, 'x', (Op.NOT, 'x')))
-    True
+    'S'
     >>> dpll((Op.AND, 'x', (Op.NOT, 'x')))
-    False
+    'U'
     >>> dpll((Op.OR, 'x', 'y'))
-    True
+    'S'
     >>> dpll((Op.OR, 'x', (Op.OR, 'y', 'z')))
-    True
+    'S'
     >>> dpll((Op.NOT, (Op.OR, 'x', (Op.OR, 'y', 'z'))))
-    True
+    'S'
     """
-    ast = convert_to_cnf(ast)
-    # TODO
-    return determine_satisfiability(ast)
+    subformulas = [cnf_as_disjunction_lists(convert_to_cnf(ast))]
+    while subformulas:
+        formula = subformulas.pop()
+        if not formula:
+            return 'S'
+        if any(filter(lambda clause: not clause, formula)):
+            return 'U'
+        formula = one_literal_rule(formula)
+        if isinstance(formula, str):
+            return formula
+        formula = pure_literal(formula)
+        if isinstance(formula, str):
+            return formula
+        formula = resolution(formula)
+        if isinstance(formula, str):
+            return formula
+        subformulas.extend(branch_formula(formula))
+    return False
 
 
 # noinspection PyPep8Naming
@@ -618,4 +666,4 @@ def proveFormula(formula: str):
     >>> proveFormula('(AND (NOT q) q q)')
     'U'
     """
-    return 'S' if dpll(parse(formula)) else 'U'
+    return dpll(parse(formula))
