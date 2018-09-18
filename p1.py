@@ -376,6 +376,79 @@ def distribute_disjunctions(ast):
         return (op,) + tuple(disjunction_lists[0])
     return (Op.AND,) + tuple(map(lambda x: tuple([Op.OR] + x), disjunction_lists))
 
+def pure_literal(ast):
+    """
+    Performs pure-literal rule on CNF formula
+    :param ast: Resule from parse()
+    :return: A CNF with all clauses eliminated by pure-literal removed
+    >>> pure_literal(('x'))
+    'S'
+    >>> pure_literal((Op.AND, 'x', 'y'))
+    'S'
+    >>> pure_literal((Op.OR, 'x', 'y'))
+    'S'
+    >>> pure_literal((Op.AND, (Op.OR, 'x', 'y'), (Op.OR, 'y', 'y'), (Op.OR, 'x', 'z'), (Op.OR, 'y', 'z')))
+    'S'
+    >>> pure_literal((Op.AND, (Op.OR, (Op.NOT, 'p'), (Op.NOT, 'p'), 'q'), (Op.OR, 'q', (Op.NOT, 'p'), 'q')))
+    'S'
+    >>> pure_literal((Op.AND, (Op.OR, (Op.NOT, 'q'), (Op.NOT, 'p'), 'q'), (Op.OR, 'p', (Op.NOT, 'p'), 'q')))
+    (Op.AND, (Op.OR, (Op.NOT, 'q'), (Op.NOT, 'p'), 'q'), (Op.OR, 'p', (Op.NOT, 'p'), 'q'))
+    """
+    positive_variables = []
+    negative_variables = []
+
+    temp_ast = list(ast)
+
+    for problem in temp_ast[1:]:
+        # Case for lone variable after And: (And, x, y)
+        if not isinstance(problem, tuple):
+            positive_variables.append(problem)
+        # Case for lone Not after And: (And, (Not x), y)
+        elif problem[0] == Op.NOT:
+            negative_variables.append(problem[1])
+        # Case for Or statement after And: (And, (Or, x, y), y)
+        else:
+            #   Can only be an OR this far down
+            for expression in problem[1:]:
+                # Case for lone variables within a OR statement, which are always positive
+                if not isinstance(expression, tuple) and expression not in positive_variables:
+                    positive_variables.append(expression)
+                # Case for Nots in a OR statement, which are always negative. This assumes proper CNF
+                elif isinstance(expression, tuple):
+                    if expression[1] not in negative_variables:
+                        negative_variables.append(expression[1])
+
+    positive_set = set(positive_variables)
+    negative_set = set(negative_variables)
+
+    positive_only = positive_set - negative_set
+    negative_only = negative_set - positive_set
+
+    for problem in temp_ast[1:]:
+        # Case for lone variable after And: (And, x, y)
+        if not isinstance(problem, tuple) and problem in positive_only:
+            temp_ast.remove(problem)
+        # Case for lone Not after And: (And, (Not x), y)
+        elif problem[0] == Op.NOT and problem[1] in negative_only:
+            temp_ast.remove(problem)
+        # Case for Or statement after And: (And, (Or, x, y), y)
+        else:
+            for expression in problem[1:]:
+                # Case for lone variables within a OR statement
+                if not isinstance(expression, tuple) and expression in positive_only:
+                    temp_ast.remove(problem)
+                    break
+                # Case for Nots in a OR statement
+                elif type(expression) is tuple:
+                    if expression[1] in negative_only:
+                        temp_ast.remove(problem)
+                        break
+
+
+    if len(temp_ast) <= 1:
+        return "S"
+
+    return tuple(temp_ast)
 
 def convert_to_cnf(ast):
     """
@@ -401,6 +474,96 @@ def convert_to_cnf(ast):
     ast = remove_double_negations(ast)
     ast = distribute_disjunctions(ast)
     return ast
+
+
+def cnf_as_disjunction_lists(cnf_ast):
+    """
+    Returns the CNF AST as a list of disjunction lists.
+    :param cnf_ast: The result from convert_to_cnf()
+    :return: A list containing the conjoined disjunction lists
+    >>> cnf_as_disjunction_lists('x')
+    [['x']]
+    >>> cnf_as_disjunction_lists((Op.OR, 'x', 'y'))
+    [['x', 'y']]
+    >>> cnf_as_disjunction_lists((Op.AND, 'x', 'y'))
+    [['x'], ['y']]
+    >>> cnf_as_disjunction_lists((Op.AND, 'a', (Op.OR, 'x', 'y')))
+    [['a'], ['x', 'y']]
+    >>> cnf_as_disjunction_lists((Op.AND, (Op.NOT, 'a'), (Op.OR, 'x', (Op.NOT, 'y')), 'z'))
+    [[(Op.NOT, 'a')], ['x', (Op.NOT, 'y')], ['z']]
+    >>> cnf_as_disjunction_lists((Op.AND, (Op.NOT, 'a'), (Op.OR, 'x', (Op.NOT, 'y'), 'b'), 'z', (Op.OR, 'c', 'd')))
+    [[(Op.NOT, 'a')], ['x', (Op.NOT, 'y'), 'b'], ['z'], ['c', 'd']]
+    """
+    if isinstance(cnf_ast, str):
+        return [[cnf_ast]]
+    op = cnf_ast[0]
+    if op == Op.NOT:
+        return [[cnf_ast]]
+    if op == Op.OR:
+        return [list(cnf_ast[1:])]
+    # op == Op.AND:
+    return [list(arg[1:]) if arg[0] == Op.OR else [arg] for arg in cnf_ast[1:]]
+
+
+def one_literal_rule(clauses):
+    """
+    Applies the one-literal rule to the clauses.
+    :param clauses: The output from cnf_to_disjunction_lists(), representing a CNF formula.
+    :return: A new CNF formula in the same format as the input, with equisatisfiability.
+
+    >>> one_literal_rule([])
+    []
+    >>> one_literal_rule([['a']])
+    [['a']]
+    >>> one_literal_rule([[(Op.NOT, 'a')]])
+    [[(Op.NOT, 'a')]]
+    >>> one_literal_rule([['a', 'b']])
+    [['a', 'b']]
+    >>> one_literal_rule([['a', 'b'], ['a']])
+    [['a']]
+    >>> one_literal_rule([['a', 'b'], ['a'], ['b']])
+    [['a'], ['b']]
+    >>> one_literal_rule([['a'], ['b']])
+    [['a'], ['b']]
+    >>> one_literal_rule([['a', 'b'], [(Op.NOT, 'a'), 'c'], [(Op.NOT, 'c'), 'd'], ['a']])
+    [['c'], ['d'], ['a']]
+    """
+    changed = True
+    while changed:
+        changed = False
+        for prop in clauses:
+            if len(prop) != 1:
+                continue
+            new_clauses = []
+            literal = prop[0]
+            if literal[0] == Op.NOT:
+                for disjunction in clauses:
+                    if disjunction == prop:
+                        new_clauses.append(disjunction)
+                        continue
+                    variable = literal[1]
+                    if any(filter(lambda p: p[0] == Op.NOT and p[1] == variable, disjunction)):
+                        changed = True
+                        continue
+                    reduced_disjunction = list(filter(lambda p: p == variable, disjunction))
+                    if len(disjunction) != len(reduced_disjunction):
+                        changed = True
+                    new_clauses.append(reduced_disjunction)
+            else:
+                for disjunction in clauses:
+                    if disjunction == prop:
+                        new_clauses.append(disjunction)
+                        continue
+                    if any(filter(lambda p: p == literal, disjunction)):
+                        changed = True
+                        continue
+                    reduced_disjunction = list(filter(lambda p: p[0] != Op.NOT or p[1] != literal, disjunction))
+                    if len(disjunction) != len(reduced_disjunction):
+                        changed = True
+                    new_clauses.append(reduced_disjunction)
+            clauses = new_clauses
+        if not changed:
+            return clauses
 
 
 def dpll(ast):
