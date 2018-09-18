@@ -606,12 +606,7 @@ def dpll(ast):
     >>> dpll((Op.NOT, (Op.OR, 'x', (Op.OR, 'y', 'z'))))
     'S'
     """
-<<<<<<< HEAD
-    ast = cnf_as_disjunction_lists(ast)
-    # TODO
 
-
-=======
     subformulas = [cnf_as_disjunction_lists(convert_to_cnf(ast))]
     while subformulas:
         formula = subformulas.pop()
