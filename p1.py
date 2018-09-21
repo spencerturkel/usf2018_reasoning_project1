@@ -619,9 +619,10 @@ def dpll(ast):
         formula = pure_literal(formula)
         if isinstance(formula, str):
             return formula
-        formula = resolution(formula)
-        if isinstance(formula, str):
-            return formula
+        #Was a bug in resolution that we were unable to resolve, commented out as the program works without it
+        # formula = resolution(formula)
+        # if isinstance(formula, str):
+            # return formula
         subformulas.extend(branch_formula(formula))
     return False
 
