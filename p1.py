@@ -498,6 +498,7 @@ def resolution(formula):
                         if len(checking_variable) == 2:
                             if var == checking_variable[1]:
                                 temp_formula = resolve_matched(formula, i, j, m, n, resolved_formula)
+                                print(temp_formula)
                                 if temp_formula == 'z':
                                     return 'U'
                                 else:
@@ -619,9 +620,10 @@ def dpll(ast):
         formula = pure_literal(formula)
         if isinstance(formula, str):
             return formula
-        formula = resolution(formula)
-        if isinstance(formula, str):
-            return formula
+        #Was a bug in resolution that we were unable to resolve, commented out as the program works without it
+        # formula = resolution(formula)
+        # if isinstance(formula, str):
+            # return formula
         subformulas.extend(branch_formula(formula))
     return False
 
