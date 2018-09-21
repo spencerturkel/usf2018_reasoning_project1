@@ -498,7 +498,6 @@ def resolution(formula):
                         if len(checking_variable) == 2:
                             if var == checking_variable[1]:
                                 temp_formula = resolve_matched(formula, i, j, m, n, resolved_formula)
-                                print(temp_formula)
                                 if temp_formula == 'z':
                                     return 'U'
                                 else:
