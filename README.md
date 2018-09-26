@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.com/spencerturkel/usf2018_reasoning_project1.svg?token=gm1zuwtz6yWqd9Rwapxf&branch=master)](https://travis-ci.com/spencerturkel/usf2018_reasoning_project1)
 
 # What is this?
-This project was an assignment for the first semester of our Computationally Modelling Reasoning course at the University of South Florida.
+This project was the first project for our Computationally Modelling Reasoning course at the University of South Florida.
 
 The assignment specification is detailed in the Slide JPG files.
 As a brief overview, this project implements a [SAT Solver](https://en.wikipedia.org/wiki/Boolean_satisfiability_problem) using the [DPLL algorithm](https://en.wikipedia.org/wiki/DPLL_algorithm).
