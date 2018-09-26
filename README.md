@@ -1,5 +1,17 @@
 [![Build Status](https://travis-ci.com/spencerturkel/usf2018_reasoning_project1.svg?token=gm1zuwtz6yWqd9Rwapxf&branch=master)](https://travis-ci.com/spencerturkel/usf2018_reasoning_project1)
 
+# What is this?
+This project was an assignment for the first semester of our Computationally Modelling Reasoning course at the University of South Florida.
+
+The assignment specification is detailed in the Slide JPG files.
+As a brief overview, this project implements a [SAT Solver](https://en.wikipedia.org/wiki/Boolean_satisfiability_problem) using the [DPLL algorithm](https://en.wikipedia.org/wiki/DPLL_algorithm).
+
+The solver is implemented using Python 3.4, in the file [p1.py](https://github.com/spencerturkel/usf2018_reasoning_project1/blob/master/p1.py).
+
+We used more than 100 unit tests (as [python doctests](https://pymotw.com/3/doctest/)) during the development of the project.
+
+We integrated [Travis CI](https://travis-ci.com/) and [GitHub Pull Requests](https://github.com/spencerturkel/usf2018_reasoning_project1/pulls?utf8=%E2%9C%93&q=is%3Apr) to ensure that the master branch always passed all unit tests, and that all code was reviewed by at least one other person.
+
 # proveFormula(F)
 F is input string of an s-exp of a PC formula.
 
